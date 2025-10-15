@@ -45,4 +45,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function facultyRank()
+    {
+        return $this->belongsTo(FacultyRank::class);
+    }
 }

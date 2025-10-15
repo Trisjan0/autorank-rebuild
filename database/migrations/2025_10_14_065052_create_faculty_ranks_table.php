@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('faculty_ranks', function (Blueprint $table) {
             $table->id();
-            $table->string('rank_name')->unique();
+            $table->string('name')->unique();
             $table->unsignedInteger('level')->default(0);
             $table->timestamps();
         });
