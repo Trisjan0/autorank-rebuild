@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
@@ -31,11 +32,11 @@ class UserResource extends Resource
                     ->email()
                     ->required()
                     ->maxLength(255),
-                TextInput::make('password')
+                Forms\Components\TextInput::make('password')
                     ->password()
-                    ->required(fn(string $context): bool => $context === 'create') // Only required on the 'create' page
-                    ->confirmed() // Adds a 'password_confirmation' field
-                    ->dehydrated(fn($state) => filled($state)), // Only save the field if it's filled in
+                    ->dehydrateStateUsing(fn(string $state): string => Hash::make($state))
+                    ->dehydrated(fn(?string $state): bool => filled($state))
+                    ->required(fn(string $operation): bool => $operation === 'create'),
                 Forms\Components\TextInput::make('faculty_rank')
                     ->required()
                     ->maxLength(255)

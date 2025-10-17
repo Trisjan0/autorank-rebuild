@@ -35,7 +35,7 @@ class FacultyRankSeeder extends Seeder
         ];
 
         foreach ($ranks as $rank) {
-            FacultyRank::create($rank);
+            FacultyRank::firstOrCreate($rank);
         }
     }
 }

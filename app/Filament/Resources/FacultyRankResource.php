@@ -43,6 +43,7 @@ class FacultyRankResource extends Resource
                     ->searchable()
                     ->sortable(),
             ])
+            ->defaultSort('level', 'asc')
             ->filters([
                 //
             ])

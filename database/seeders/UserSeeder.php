@@ -16,17 +16,17 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Create Roles
-        $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin']);
-        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
-        $evaluatorRole = Role::firstOrCreate(['name' => 'Evaluator']);
-        Role::firstOrCreate(['name' => 'Instructor']);
+        $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $evaluatorRole = Role::firstOrCreate(['name' => 'Evaluator', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'Instructor', 'guard_name' => 'web']);
 
         // Create Super Admin User
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@autorank.com'],
             [
                 'name' => 'Super Admin',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('sredlohecalpa'),
             ]
         );
         $superAdmin->assignRole($superAdminRole);
@@ -36,7 +36,7 @@ class UserSeeder extends Seeder
             ['email' => 'admin@autorank.com'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('aredlohecalp'),
             ]
         );
         $admin->assignRole($adminRole);
@@ -46,7 +46,7 @@ class UserSeeder extends Seeder
             ['email' => 'evaluator@autorank.com'],
             [
                 'name' => 'Evaluator',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('eredlohecalp'),
             ]
         );
         $evaluator->assignRole($evaluatorRole);
