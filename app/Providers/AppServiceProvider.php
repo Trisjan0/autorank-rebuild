@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Models\Setting;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,7 +14,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton('app.settings', function () {
+            return Cache::rememberForever('settings', function () {
+                try {
+                    return Setting::all()->pluck('value', 'key');
+                } catch (QueryException $e) {
+                    return collect();
+                }
+            });
+        });
     }
 
     /**
