@@ -33,6 +33,7 @@ class GoogleAuthController extends Controller
             'email' => $googleUser->email,
             'google_token' => $googleUser->token,
             'google_refresh_token' => $googleUser->refreshToken,
+            'avatar_url' => $googleUser->getAvatar(),
         ]);
 
         // Assign the 'Instructor' role to new users by default.

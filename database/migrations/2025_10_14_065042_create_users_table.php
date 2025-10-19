@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->foreignId('faculty_rank_id')->nullable()->constrained('faculty_ranks');
-            $table->string('avatar')->nullable();
+            $table->string('avatar_url')->nullable();
             $table->string('instructor_number')->nullable()->unique();
             $table->string('phone_number')->nullable();
             $table->timestamp('rank_assigned_at')->nullable();
