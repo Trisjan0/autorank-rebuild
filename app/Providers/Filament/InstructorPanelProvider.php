@@ -9,11 +9,10 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
+use App\Filament\Traits\ManagesPanelColors;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
@@ -22,21 +21,15 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class InstructorPanelProvider extends PanelProvider
 {
+    use ManagesPanelColors;
+
     public function panel(Panel $panel): Panel
     {
-        $settings = app('app.settings');
-
         return $panel
             ->id('instructor')
             ->path('instructor')
             ->login(Login::class)
-            ->colors([
-                'primary'   => $settings->get('primary', '#0288EC'),
-                'secondary' => $settings->get('secondary', Color::Gray),
-                'danger'    => $settings->get('danger', Color::Red),
-                'success'   => $settings->get('success', Color::Green),
-                'warning'   => $settings->get('warning', Color::Yellow),
-            ])
+            ->colors($this->getPanelColors())
             ->discoverResources(in: app_path('Filament/Instructor/Resources'), for: 'App\\Filament\\Instructor\\Resources')
             ->discoverPages(in: app_path('Filament/Instructor/Pages'), for: 'App\\Filament\\Instructor\\Pages')
             ->pages([
@@ -45,7 +38,6 @@ class InstructorPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Instructor/Widgets'), for: 'App\\Filament\\Instructor\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

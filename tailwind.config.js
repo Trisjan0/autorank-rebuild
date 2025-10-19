@@ -6,7 +6,6 @@ export default {
         './app/Filament/**/*.php',
         './resources/views/filament/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
-        // This is the important part for your custom view
         './resources/views/livewire/**/*.blade.php',
     ],
 }

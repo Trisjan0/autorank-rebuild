@@ -2,33 +2,51 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Setting;
+use App\Filament\Traits\ManagesPanelColors;
+use App\Models\User;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Pages\Page;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Filament\Forms\Components\Section;
+use Spatie\Valuestore\Valuestore;
 
 class Settings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog';
-
+    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static ?string $navigationGroup = 'Settings';
     protected static string $view = 'filament.pages.settings';
 
     public ?array $data = [];
 
+    /**
+     * This method runs when the component is first loaded.
+     * It pre-populates the form with saved settings and falls back
+     * to the centralized defaults.
+     */
     public function mount(): void
     {
-        $this->form->fill(
-            Setting::all()->pluck('value', 'key')->toArray()
-        );
+        $settings = file_exists(config('settings.path'))
+            ? Valuestore::make(config('settings.path'))->all()
+            : [];
+
+        // Fetch the defaults from the centralized trait.
+        // This ensures the color pickers show the default colors on first load.
+        $defaultData = ManagesPanelColors::getDefaultColors();
+
+        // Fill the form, letting saved settings override the defaults.
+        $this->form->fill(array_merge($defaultData, $settings));
     }
 
+    /**
+     * Define the structure of the settings form.
+     */
     public function form(Form $form): Form
     {
         return $form
@@ -38,76 +56,94 @@ class Settings extends Page implements HasForms
                     ->schema([
                         ColorPicker::make('primary')
                             ->label('Primary Color')
-                            ->extraAttributes(['class' => 'h-10 w-full rounded-lg border border-gray-600']),
+                            ->hexColor(),
 
                         ColorPicker::make('secondary')
                             ->label('Secondary Color')
-                            ->extraAttributes(['class' => 'h-10 w-full rounded-lg border border-gray-600']),
+                            ->hexColor(),
 
                         ColorPicker::make('danger')
                             ->label('Danger Color')
-                            ->extraAttributes(['class' => 'h-10 w-full rounded-lg border border-gray-600']),
+                            ->hexColor(),
 
                         ColorPicker::make('success')
                             ->label('Success Color')
-                            ->extraAttributes(['class' => 'h-10 w-full rounded-lg border border-gray-600']),
+                            ->hexColor(),
 
                         ColorPicker::make('warning')
                             ->label('Warning Color')
-                            ->extraAttributes(['class' => 'h-10 w-full rounded-lg border border-gray-600']),
+                            ->hexColor(),
                     ])
                     ->columns(2),
             ])
             ->statePath('data');
     }
 
+    /**
+     * Save the form data to the settings file.
+     */
     public function save(): void
     {
         $data = $this->form->getState();
-
-        foreach ($data as $key => $value) {
-            if (!empty($value)) {
-                if (!preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $value)) {
-                    Notification::make()
-                        ->title("Invalid color format for '{$key}'. Must be a valid HEX color (e.g. #FF00FF).")
-                        ->danger()
-                        ->send();
-                    return;
-                }
-            }
-        }
+        $settings = Valuestore::make(config('settings.path'));
 
         foreach ($data as $key => $value) {
             if ($value) {
-                Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+                $settings->put($key, $value);
             } else {
-                Setting::where('key', $key)->delete();
+                $settings->forget($key);
             }
         }
 
-        Cache::forget('settings');
+        $this->updateCacheAndNotify('Website theme settings saved successfully');
+    }
+
+    /**
+     * Reset all colors to their default values by removing them from the settings file.
+     */
+    public function resetColors(): void
+    {
+        $settings = Valuestore::make(config('settings.path'));
+        $colorKeys = ['primary', 'secondary', 'danger', 'success', 'warning'];
+
+        // Loop and remove each key.
+        foreach ($colorKeys as $key) {
+            $settings->forget($key);
+        }
+
+        // Fill the form with the defaults for immediate visual feedback.
+        $this->form->fill(ManagesPanelColors::getDefaultColors());
+
+        $this->updateCacheAndNotify('Website theme colors reset to default', 'success');
+    }
+
+    /**
+     * A helper function to clear the cache, send a notification, and reload the page.
+     */
+    private function updateCacheAndNotify(string $message, string $status = 'success'): void
+    {
+        Cache::forget('app.settings');
 
         Notification::make()
-            ->title('Color Settings saved successfully')
-            ->success()
+            ->title($message)
+            ->{$status}()
             ->send();
 
+        // Reload the page to apply the new theme colors instantly.
         $this->js('window.location.reload()');
     }
 
-    public function resetColors(): void
+    /**
+     * Control who can access this settings page.
+     */
+    public static function canAccess(): bool
     {
-        $colorKeys = ['primary', 'secondary', 'danger', 'success', 'warning'];
+        $user = Auth::user();
 
-        Setting::whereIn('key', $colorKeys)->delete();
-        $this->form->fill([]);
-        Cache::forget('settings');
+        if (! $user instanceof User) {
+            return false;
+        }
 
-        Notification::make()
-            ->title('Colors reset to default')
-            ->success()
-            ->send();
-
-        $this->js('window.location.reload()');
+        return $user->hasRole(['Admin', 'Super Admin']);
     }
 }
