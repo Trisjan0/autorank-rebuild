@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Traits\AppliesCommonPanelBranding;
 use App\Filament\Traits\ManagesPanelColors;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -21,20 +22,19 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
+    use AppliesCommonPanelBranding;
     use ManagesPanelColors;
 
     public function panel(Panel $panel): Panel
     {
+        $panel = $this->applySharedBranding($panel);
+
         return $panel
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandLogo(fn() => view('filament.admin.logo'))
             ->colors($this->getPanelColors())
-            ->renderHook(
-                'panels::user-menu.before',
-                fn() => view('filament.admin.user-role'),
-            )
+            ->font('Archivo')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

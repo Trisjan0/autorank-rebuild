@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Traits\AppliesCommonPanelBranding;
 use App\Filament\Instructor\Auth\Login;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -21,15 +22,19 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class InstructorPanelProvider extends PanelProvider
 {
+    use AppliesCommonPanelBranding;
     use ManagesPanelColors;
 
     public function panel(Panel $panel): Panel
     {
+        $panel = $this->applySharedBranding($panel);
+
         return $panel
             ->id('instructor')
             ->path('instructor')
             ->login(Login::class)
             ->colors($this->getPanelColors())
+            ->font('Archivo')
             ->discoverResources(in: app_path('Filament/Instructor/Resources'), for: 'App\\Filament\\Instructor\\Resources')
             ->discoverPages(in: app_path('Filament/Instructor/Pages'), for: 'App\\Filament\\Instructor\\Pages')
             ->pages([
