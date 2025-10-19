@@ -15,7 +15,7 @@ class FacultyRank extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'rank_name',
+        'name',
         'level',
     ];
 }

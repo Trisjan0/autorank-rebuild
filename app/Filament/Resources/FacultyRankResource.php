@@ -13,12 +13,27 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class FacultyRankResource extends Resource
 {
     protected static ?string $model = FacultyRank::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+
+    protected static ?string $navigationGroup = 'System Management';
+
+    public static function canViewAny(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->hasRole(['Admin', 'Super Admin']);
+    }
 
     public static function form(Form $form): Form
     {
@@ -29,7 +44,8 @@ class FacultyRankResource extends Resource
                     ->maxLength(255),
                 TextInput::make('level')
                     ->required()
-                    ->numeric(),
+                    ->integer()
+                    ->minValue(1),
             ]);
     }
 

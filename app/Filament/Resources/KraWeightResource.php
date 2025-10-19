@@ -14,12 +14,27 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class KraWeightResource extends Resource
 {
     protected static ?string $model = KraWeight::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
+
+    protected static ?string $navigationGroup = 'System Management';
+
+    public static function canViewAny(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->hasRole(['Admin', 'Super Admin']);
+    }
 
     public static function form(Form $form): Form
     {
