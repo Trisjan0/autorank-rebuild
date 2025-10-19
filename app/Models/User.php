@@ -4,32 +4,36 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
         'email',
+        'password',
+        'faculty_rank_id',
+        'rank_assigned_by',
+        'rank_assigned_at',
         'google_id',
         'google_token',
         'google_refresh_token',
-        'faculty_rank_id',
     ];
 
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -46,10 +50,14 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'rank_assigned_at' => 'datetime',
         ];
     }
 
-    public function facultyRank()
+    /**
+     * Defines the relationship to the FacultyRank model.
+     */
+    public function facultyRank(): BelongsTo
     {
         return $this->belongsTo(FacultyRank::class);
     }

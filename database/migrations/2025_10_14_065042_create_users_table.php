@@ -17,12 +17,12 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
+            $table->foreignId('faculty_rank_id')->nullable()->constrained('faculty_ranks');
             $table->string('avatar')->nullable();
             $table->string('instructor_number')->nullable()->unique();
             $table->string('phone_number')->nullable();
-            $table->string('faculty_rank')->default('Unset');
             $table->timestamp('rank_assigned_at')->nullable();
-            $table->string('rank_assigned_by')->default('N/A');
+            $table->string('rank_assigned_by')->nullable();
             $table->string('google_id')->nullable()->unique();
             $table->text('google_token')->nullable();
             $table->text('google_refresh_token')->nullable();

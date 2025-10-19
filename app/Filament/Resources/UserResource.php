@@ -3,17 +3,19 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
+use App\Models\FacultyRank;
 use App\Models\User;
-use Filament\Forms;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+use Spatie\Permission\Models\Role;
 
 class UserResource extends Resource
 {
@@ -25,26 +27,49 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('email')
+                TextInput::make('email')
                     ->email()
                     ->required()
+                    ->unique(ignoreRecord: true)
                     ->maxLength(255),
-                Forms\Components\TextInput::make('password')
+                TextInput::make('password')
                     ->password()
                     ->dehydrateStateUsing(fn(string $state): string => Hash::make($state))
                     ->dehydrated(fn(?string $state): bool => filled($state))
-                    ->required(fn(string $operation): bool => $operation === 'create'),
-                Forms\Components\TextInput::make('faculty_rank')
+                    ->required(fn(string $operation): bool => $operation === 'create')
+                    ->visible(fn(string $operation): bool => $operation === 'create')
+                    ->rule(
+                        Password::min(8)
+                            ->letters()
+                            ->mixedCase()
+                            ->numbers()
+                            ->symbols()
+                            ->uncompromised()
+                    )
+                    ->confirmed()
+                    ->maxLength(255),
+                TextInput::make('password_confirmation')
+                    ->password()
+                    ->required(fn(string $operation): bool => $operation === 'create')
+                    ->visible(fn(string $operation): bool => $operation === 'create')
+                    ->dehydrated(false),
+                Select::make('faculty_rank_id')
+                    ->label('Faculty Rank')
+                    ->options(FacultyRank::all()->pluck('name', 'id'))
+                    ->searchable()
+                    ->placeholder('Unset'),
+                Select::make('role_id')
+                    ->label('Role')
                     ->required()
-                    ->maxLength(255)
-                    ->default('Unset'),
-                Forms\Components\Select::make('roles')
-                    ->multiple()
-                    ->relationship('roles', 'name')
-                    ->preload(),
+                    ->options(Role::where('name', '!=', 'super_admin')->pluck('name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->afterStateHydrated(function (Select $component, ?User $record) {
+                        $component->state($record?->roles->first()?->id);
+                    }),
             ]);
     }
 
@@ -52,29 +77,39 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('email')
+                TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('faculty_rank')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('rank_assigned_at')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('rank_assigned_by')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                TextColumn::make('facultyRank.name')
+                    ->label('Faculty Rank')
+                    ->searchable()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->default('Unset'),
+                TextColumn::make('rank_assigned_at')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('roles.name')
+                    ->formatStateUsing(function (?string $state, User $record): string {
+                        return $record->faculty_rank_id ? Carbon::parse($state)->format('M d, Y H:i') : '-';
+                    })
+                    ->default('Unset'),
+                TextColumn::make('rank_assigned_by')
+                    ->searchable()
+                    ->formatStateUsing(function (?string $state, User $record): string {
+                        return $record->faculty_rank_id ? $state : '-';
+                    })
+                    ->default('Unset'),
+                TextColumn::make('roles.name')
                     ->badge(),
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
