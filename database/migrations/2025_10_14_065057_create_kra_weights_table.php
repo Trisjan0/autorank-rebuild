@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('kra_weights', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('faculty_rank_id')->constrained()->cascadeOnDelete();
-            $table->unsignedInteger('instruction_weight');
-            $table->unsignedInteger('research_weight');
-            $table->unsignedInteger('extension_weight');
-            $table->unsignedInteger('professional_development_weight');
+            $table->string('rank_category')->unique();
+            $table->unsignedInteger('kra1_weight');
+            $table->unsignedInteger('kra2_weight');
+            $table->unsignedInteger('kra3_weight');
+            $table->unsignedInteger('kra4_weight');
             $table->timestamps();
         });
     }

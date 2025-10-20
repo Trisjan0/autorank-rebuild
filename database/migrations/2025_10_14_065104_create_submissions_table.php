@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('type'); // e.g., research-outputs, mentorship-services
             $table->json('data'); // Stores all unique fields for each type
             $table->string('filename')->nullable();
-            $table->string('google_drive_file_id')->nullable();
+            $table->json('google_drive_file_id')->nullable();
             $table->decimal('score', 8, 2)->nullable();
             $table->string('status')->default('For Submission');
             $table->timestamps();

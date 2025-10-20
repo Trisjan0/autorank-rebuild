@@ -10,11 +10,11 @@ class KraWeight extends Model
     use HasFactory;
 
     protected $fillable = [
-        'faculty_rank_id',
-        'instruction_weight',
-        'research_weight',
-        'extension_weight',
-        'professional_development_weight',
+        'rank_category',
+        'kra1_weight',
+        'kra2_weight',
+        'kra3_weight',
+        'kra4_weight',
     ];
 
     public function facultyRank()

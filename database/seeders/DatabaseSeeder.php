@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             FacultyRankSeeder::class,
             UserSeeder::class,
+            KraWeightSeeder::class,
         ]);
     }
 }
