@@ -20,20 +20,15 @@ use Illuminate\Support\Str;
 
 class InstructionalMaterialsWidget extends BaseWidget
 {
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static string $view = 'filament.instructor.widgets.k-r-a1.instructional-materials-widget';
 
     public ?string $activeTable = 'sole_authorship';
 
-    public function table(Table $table): Table
+    public function updatedActiveTable(): void
     {
-        return $table
-            ->query(fn(): Builder => $this->getTableQuery())
-            ->heading(fn(): string => $this->getTableHeading())
-            ->columns($this->getTableColumns())
-            ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
+        $this->resetTable();
     }
 
     protected function getTableQuery(): Builder
@@ -43,43 +38,55 @@ class InstructionalMaterialsWidget extends BaseWidget
             'co_authorship' => 'im-co-authorship',
             'academic_program' => 'im-academic-program',
         ];
-        $type = $typeMap[$this->activeTable] ?? 'im-sole-authorship';
 
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $type);
+            ->where('type', $typeMap[$this->activeTable] ?? 'im-sole-authorship');
     }
 
-    protected function getTableHeading(): string
+    protected function getTableHeading(): ?string
     {
-        return Str::of($this->activeTable)->replace('_', ' ')->title() . ' Submissions';
+        return Str::of($this->activeTable)
+            ->replace('_', ' ')
+            ->title() . ' Submissions';
     }
 
     protected function getTableColumns(): array
     {
-        switch ($this->activeTable) {
-            case 'sole_authorship':
-            case 'co_authorship':
-                $columns = [
-                    Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
-                    Tables\Columns\TextColumn::make('data.material_type')->label('Material Type')->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())->badge(),
-                    Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
-                    Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
-                ];
-                if ($this->activeTable === 'co_authorship') {
-                    $columns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%');
-                }
-                return $columns;
-            case 'academic_program':
-                return [
-                    Tables\Columns\TextColumn::make('data.program_name')->label('Name of Program')->wrap(),
-                    Tables\Columns\TextColumn::make('data.program_type')->label('Type of Program')->badge(),
-                    Tables\Columns\TextColumn::make('data.role')->label('Role'),
-                    Tables\Columns\TextColumn::make('data.academic_year_implemented')->label('AY Implemented'),
-                ];
-            default:
-                return [];
-        }
+        return match ($this->activeTable) {
+            'sole_authorship' => [
+                Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
+                Tables\Columns\TextColumn::make('data.material_type')
+                    ->label('Material Type')
+                    ->formatStateUsing(fn(?string $state) => Str::of($state)->replace('_', ' ')->title())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+
+            'co_authorship' => [
+                Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
+                Tables\Columns\TextColumn::make('data.material_type')
+                    ->label('Material Type')
+                    ->formatStateUsing(fn(?string $state) => Str::of($state)->replace('_', ' ')->title())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
+                Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%'),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+
+            'academic_program' => [
+                Tables\Columns\TextColumn::make('data.program_name')->label('Name of Program')->wrap(),
+                Tables\Columns\TextColumn::make('data.program_type')->label('Type of Program')->badge(),
+                Tables\Columns\TextColumn::make('data.role')->label('Role'),
+                Tables\Columns\TextColumn::make('data.academic_year_implemented')->label('AY Implemented'),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+
+            default => [],
+        };
     }
 
     protected function getTableHeaderActions(): array
@@ -90,7 +97,7 @@ class InstructionalMaterialsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()->activeApplication->id;
+                    $data['application_id'] = Auth::user()?->activeApplication?->id; // temporarily allow no application id submission
                     $data['category'] = 'KRA I';
 
                     $typeMap = [
@@ -98,11 +105,11 @@ class InstructionalMaterialsWidget extends BaseWidget
                         'co_authorship' => 'im-co-authorship',
                         'academic_program' => 'im-academic-program',
                     ];
-                    $data['type'] = $typeMap[$this->activeTable] ?? 'im-sole-authorship';
 
+                    $data['type'] = $typeMap[$this->activeTable] ?? 'im-sole-authorship';
                     return $data;
                 })
-                ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
+                ->modalHeading(fn() => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('3xl'),
         ];
     }
@@ -112,7 +119,7 @@ class InstructionalMaterialsWidget extends BaseWidget
         return [
             EditAction::make()
                 ->form($this->getFormSchema())
-                ->modalHeading(fn(): string => 'Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
+                ->modalHeading(fn() => 'Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('3xl'),
             DeleteAction::make(),
         ];
@@ -126,7 +133,11 @@ class InstructionalMaterialsWidget extends BaseWidget
             case 'sole_authorship':
             case 'co_authorship':
                 $schema = [
-                    Textarea::make('data.title')->label('Title of Instructional Material')->required()->columnSpanFull(),
+                    Textarea::make('data.title')
+                        ->label('Title of Instructional Material')
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpanFull(),
                     Select::make('data.material_type')
                         ->label('Type of Instructional Material')
                         ->options([
@@ -137,11 +148,19 @@ class InstructionalMaterialsWidget extends BaseWidget
                             'testing_material' => 'Testing Material',
                         ])
                         ->required(),
-                    TextInput::make('data.reviewer')->label('Reviewer or Its Equivalent')->required(),
-                    TextInput::make('data.publisher')->label('Publisher/Repository')->required(),
-                    DatePicker::make('data.date_published')->label('Date Published')->required(),
-                    DatePicker::make('data.date_approved')->label('Date Approved for Use')->required(),
+                    TextInput::make('data.reviewer')->label('Reviewer or Its Equivalent')->maxLength(150)->required(),
+                    TextInput::make('data.publisher')->label('Publisher/Repository')->maxLength(150)->required(),
+                    DatePicker::make('data.date_published')
+                        ->label('Date Published')
+                        ->maxDate(now())
+                        ->required(),
+                    DatePicker::make('data.date_approved')
+                        ->label('Date Approved for Use')
+                        ->maxDate(now())
+                        ->rule('after_or_equal:data.date_published')
+                        ->required(),
                 ];
+
                 if ($this->activeTable === 'co_authorship') {
                     $schema[] = TextInput::make('data.contribution_percentage')
                         ->label('% Contribution')
@@ -151,24 +170,73 @@ class InstructionalMaterialsWidget extends BaseWidget
                         ->required();
                 }
                 break;
+
             case 'academic_program':
+                $currentYear = (int) date('Y');
+                $academicYears = [];
+
+                for ($i = 0; $i < 4; $i++) {
+                    $startYear = $currentYear - $i;
+                    $endYear = $startYear + 1;
+                    $academicYears["{$startYear}-{$endYear}"] = "{$startYear}-{$endYear}";
+                }
+
                 $schema = [
-                    TextInput::make('data.program_name')->label('Name of Academic Degree Program (provide complete name)')->required()->columnSpanFull(),
-                    TextInput::make('data.program_type')->label('Type of Program')->required(),
-                    TextInput::make('data.board_approval')->label('Board Approval (Board Resolution No.)')->required(),
-                    TextInput::make('data.academic_year_implemented')->label('Academic Year Implemented')->required(),
-                    TextInput::make('data.role')->label('Role')->required(),
+                    TextInput::make('data.program_name')
+                        ->label('Name of Academic Degree Program (provide complete name)')
+                        ->required()
+                        ->columnSpanFull(),
+
+                    Select::make('data.program_type')
+                        ->label('Type of Program')
+                        ->options([
+                            'New Program' => 'New Program',
+                            'Revised Program' => 'Revised Program',
+                        ])
+                        ->required(),
+
+                    TextInput::make('data.board_approval')
+                        ->label('Board Approval (Board Resolution No.)')
+                        ->required(),
+
+                    Select::make('data.academic_year_implemented')
+                        ->label('Academic Year Implemented')
+                        ->options($academicYears)
+                        ->rule('in:' . implode(',', array_keys($academicYears)))
+                        ->required(),
+
+                    Select::make('data.role')
+                        ->label('Role')
+                        ->options([
+                            'Lead' => 'Lead',
+                            'Contributor' => 'Contributor',
+                        ])
+                        ->required(),
                 ];
                 break;
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
             ->label('Proof Document(s) (Evidence Link)')
-            ->multiple()
             ->reorderable()
             ->required()
             ->disk('private')
-            ->directory(fn(): string => 'proof-documents/kra1-im/' . $this->activeTable)
+            ->directory(fn() => 'proof-documents/kra1-im/' . $this->activeTable)
+            ->maxFiles(5)
+            ->maxSize(10240)
+            ->acceptedFileTypes([
+                'application/pdf',
+                'image/jpeg',
+                'image/png',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel',
+                'application/zip',
+            ])
+            ->helperText('Upload up to 5 proof documents (PDF, DOCX, XLSX, JPG, PNG, or ZIP, max 10MB each).')
+            ->preserveFilenames()
+            ->visibility('private')
             ->columnSpanFull();
 
         return $schema;

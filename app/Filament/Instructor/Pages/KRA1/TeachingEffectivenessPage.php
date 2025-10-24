@@ -27,11 +27,4 @@ class TeachingEffectivenessPage extends Page
         }
         return $user->hasRole(['Instructor']);
     }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            TeachingEffectivenessWidget::class,
-        ];
-    }
 }

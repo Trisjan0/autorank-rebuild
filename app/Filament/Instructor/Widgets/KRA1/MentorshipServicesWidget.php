@@ -5,7 +5,7 @@ namespace App\Filament\Instructor\Widgets\KRA1;
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Actions\CreateAction;
@@ -24,6 +24,11 @@ class MentorshipServicesWidget extends BaseWidget
     protected static string $view = 'filament.instructor.widgets.k-r-a1.mentorship-services-widget';
 
     public ?string $activeTable = 'adviser';
+
+    public function updatedActiveTable(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -54,82 +59,72 @@ class MentorshipServicesWidget extends BaseWidget
         return Str::of($this->activeTable)->replace('_', ' ')->title() . ' Submissions';
     }
 
-    protected function getTableColumns(): array
+    /**
+     * Helper function to get dynamic Academic Year labels for the table.
+     */
+    private function getTableAcademicYearColumns(): array
     {
-        switch ($this->activeTable) {
-            case 'adviser':
-                return [
-                    Tables\Columns\TextColumn::make('data.requirement')->label('Requirement')->badge(),
-                    Tables\Columns\TextColumn::make('data.student_count_ay_1')->label('AY 2019–2020'),
-                    Tables\Columns\TextColumn::make('data.student_count_ay_2')->label('AY 2020–2021'),
-                    Tables\Columns\TextColumn::make('data.student_count_ay_3')->label('AY 2021–2022'),
-                    Tables\Columns\TextColumn::make('data.student_count_ay_4')->label('AY 2022–2023'),
-                ];
-            case 'panel':
-                return [
-                    Tables\Columns\TextColumn::make('data.requirement')->label('Requirement')->badge(),
-                    Tables\Columns\TextColumn::make('data.panel_count_ay_1')->label('AY 2019–2020'),
-                    Tables\Columns\TextColumn::make('data.panel_count_ay_2')->label('AY 2020–2021'),
-                    Tables\Columns\TextColumn::make('data.panel_count_ay_3')->label('AY 2021–2022'),
-                    Tables\Columns\TextColumn::make('data.panel_count_ay_4')->label('AY 2022–2023'),
-                ];
-            case 'mentor':
-                return [
-                    Tables\Columns\TextColumn::make('data.competition_name')->label('Name of Competition')->wrap(),
-                    Tables\Columns\TextColumn::make('data.award_received')->label('Award Received'),
-                    Tables\Columns\TextColumn::make('data.date_awarded')->label('Date Awarded')->date(),
-                ];
-            default:
-                return [];
+        $currentYear = (int) date('Y');
+        $columns = [];
+
+        for ($i = 0; $i < 4; $i++) {
+            $startYear = $currentYear - ($i + 1);
+            $endYear = $startYear + 1;
+            $label = "AY {$startYear}–{$endYear}";
+            $key = 'data.ay_' . (4 - $i) . '_count';
+
+            $columns[] = Tables\Columns\TextColumn::make($key)->label($label);
         }
+
+        return array_reverse($columns);
     }
 
-    protected function adviserPanelSubmissionExists(): bool
+    protected function getTableColumns(): array
     {
-        if ($this->activeTable !== 'adviser' && $this->activeTable !== 'panel') {
-            return false;
-        }
+        return match ($this->activeTable) {
+            'adviser', 'panel' => [
+                Tables\Columns\TextColumn::make('data.mentorship_type')
+                    ->label('Type')
+                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->badge(),
 
-        $activeApplicationId = Auth::user()->activeApplication->id ?? null;
-        if (!$activeApplicationId) {
-            return true;
-        }
+                ...$this->getTableAcademicYearColumns(),
 
-        $type = $this->activeTable === 'adviser' ? 'mentorship-adviser' : 'mentorship-panel';
-
-        return Submission::where('user_id', Auth::id())
-            ->where('application_id', $activeApplicationId)
-            ->where('type', $type)
-            ->exists();
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+            'mentor' => [
+                Tables\Columns\TextColumn::make('data.competition_name')->label('Name of Competition')->wrap(),
+                Tables\Columns\TextColumn::make('data.award_received')->label('Award Received'),
+                Tables\Columns\TextColumn::make('data.date_awarded')->label('Date Awarded')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+            default => [],
+        };
     }
 
     protected function getTableHeaderActions(): array
     {
-        $createAction = CreateAction::make()
-            ->label('Add')
-            ->form($this->getFormSchema())
-            ->mutateFormDataUsing(function (array $data): array {
-                $data['user_id'] = Auth::id();
-                $data['application_id'] = Auth::user()->activeApplication->id;
-                $data['category'] = 'KRA I';
+        return [
+            CreateAction::make()
+                ->label('Add')
+                ->form($this->getFormSchema())
+                ->mutateFormDataUsing(function (array $data): array {
+                    $data['user_id'] = Auth::id();
+                    $data['application_id'] = Auth::user()?->activeApplication?->id; // temporarily allow no application id submission
+                    $data['category'] = 'KRA I';
 
-                $typeMap = [
-                    'adviser' => 'mentorship-adviser',
-                    'panel' => 'mentorship-panel',
-                    'mentor' => 'mentorship-mentor',
-                ];
-                $data['type'] = $typeMap[$this->activeTable] ?? 'mentorship-adviser';
+                    $typeMap = [
+                        'adviser' => 'mentorship-adviser',
+                        'panel' => 'mentorship-panel',
+                        'mentor' => 'mentorship-mentor',
+                    ];
+                    $data['type'] = $typeMap[$this->activeTable] ?? 'mentorship-adviser';
 
-                return $data;
-            })
-            ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
-            ->modalWidth('3xl');
-
-        if ($this->activeTable === 'adviser' || $this->activeTable === 'panel') {
-            $createAction->hidden(fn(): bool => $this->adviserPanelSubmissionExists());
-        }
-
-        return [$createAction];
+                    return $data;
+                })
+                ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
+                ->modalWidth('3xl'),
+        ];
     }
 
     protected function getTableActions(): array
@@ -143,38 +138,56 @@ class MentorshipServicesWidget extends BaseWidget
         ];
     }
 
+    /**
+     * Helper function to get dynamic Academic Year fields for the form.
+     */
+    private function getAcademicYearFields(): array
+    {
+        $labelPrefix = $this->activeTable === 'adviser' ? 'No. of Student Advisees' : 'No. of Times as Panel';
+        $currentYear = (int) date('Y');
+        $fields = [];
+
+        for ($i = 0; $i < 4; $i++) {
+            $startYear = $currentYear - ($i + 1);
+            $endYear = $startYear + 1;
+            $label = "{$labelPrefix} (AY {$startYear}–{$endYear})";
+            $key = 'ay_' . (4 - $i) . '_count';
+
+            $fields[] = TextInput::make('data.' . $key)
+                ->label($label)
+                ->integer()
+                ->required()
+                ->default(0)
+                ->minValue(0);
+        }
+
+        return array_reverse($fields);
+    }
+
     protected function getFormSchema(): array
     {
-        $schema = [];
+        $schema = match ($this->activeTable) {
+            'adviser', 'panel' => [
+                Select::make('data.mentorship_type')
+                    ->label('Mentorship Type')
+                    ->options([
+                        'special_capstone_project' => 'Special/Capstone Project',
+                        'undergrad_thesis' => 'Undergrad Thesis',
+                        'masters_thesis' => 'Masters Thesis',
+                        'dissertation' => 'Dissertation',
+                    ])
+                    ->required(),
 
-        switch ($this->activeTable) {
-            case 'adviser':
-                $schema = [
-                    TextInput::make('data.requirement')->label('Requirement')->required(), // Or Select if predefined list
-                    TextInput::make('data.student_count_ay_1')->label('No. of Student Advisees (AY 2019–2020)')->numeric()->required()->default(0),
-                    TextInput::make('data.student_count_ay_2')->label('No. of Student Advisees (AY 2020–2021)')->numeric()->required()->default(0),
-                    TextInput::make('data.student_count_ay_3')->label('No. of Student Advisees (AY 2021–2022)')->numeric()->required()->default(0),
-                    TextInput::make('data.student_count_ay_4')->label('No. of Student Advisees (AY 2022–2023)')->numeric()->required()->default(0),
-                ];
-                break;
-            case 'panel':
-                $schema = [
-                    TextInput::make('data.requirement')->label('Requirement')->required(), // Or Select if predefined list
-                    TextInput::make('data.panel_count_ay_1')->label('No. of Times as Panel Member (AY 2019–2020)')->numeric()->required()->default(0),
-                    TextInput::make('data.panel_count_ay_2')->label('No. of Times as Panel Member (AY 2020–2021)')->numeric()->required()->default(0),
-                    TextInput::make('data.panel_count_ay_3')->label('No. of Times as Panel Member (AY 2021–2022)')->numeric()->required()->default(0),
-                    TextInput::make('data.panel_count_ay_4')->label('No. of Times as Panel Member (AY 2022–2023)')->numeric()->required()->default(0),
-                ];
-                break;
-            case 'mentor':
-                $schema = [
-                    TextInput::make('data.competition_name')->label('Name of the Academic Competition')->required()->columnSpanFull(),
-                    TextInput::make('data.sponsor')->label('Name of Sponsor Organization')->required(),
-                    TextInput::make('data.award_received')->label('Award Received')->required(),
-                    DatePicker::make('data.date_awarded')->label('Date Awarded')->required(),
-                ];
-                break;
-        }
+                ...$this->getAcademicYearFields(),
+            ],
+            'mentor' => [
+                TextInput::make('data.competition_name')->label('Name of the Academic Competition')->required()->columnSpanFull(),
+                TextInput::make('data.sponsor')->label('Name of Sponsor Organization')->required(),
+                TextInput::make('data.award_received')->label('Award Received')->required(),
+                DatePicker::make('data.date_awarded')->label('Date Awarded')->required(),
+            ],
+            default => [],
+        };
 
         $schema[] = FileUpload::make('google_drive_file_id')
             ->label('Proof Document(s) (Evidence Link)')
