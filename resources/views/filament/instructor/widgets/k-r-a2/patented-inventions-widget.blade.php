@@ -35,11 +35,10 @@
                 <x-filament::tabs.item
                     wire:click="$set('activeTable', 'commercialized_international')"
                     :active="$activeTable === 'commercialized_international'">
-                    Commercialized (Int'l)
+                    Commercialized (International)
                 </x-filament::tabs.item>
             </x-filament::tabs>
         </x-slot>
-
         {{ $this->table }}
     </x-filament::section>
 </x-filament-widgets::widget>

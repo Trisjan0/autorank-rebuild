@@ -1,17 +1,18 @@
 <?php
 
-namespace App\Filament\Instructor\Widgets\KRA1;
+namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 
-class MentorshipWidget extends BaseWidget
+class SocialResponsibilityWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
@@ -21,13 +22,14 @@ class MentorshipWidget extends BaseWidget
             ->query(
                 Submission::query()
                     ->where('user_id', Auth::id())
-                    ->where('type', 'mentorship-competition')
+                    ->where('type', 'extension-social-responsibility')
             )
             ->heading('Submissions')
             ->columns([
-                Tables\Columns\TextColumn::make('data.competition_name')->label('Competition Name')->wrap(),
-                Tables\Columns\TextColumn::make('data.award')->label('Award Received')->badge(),
-                Tables\Columns\TextColumn::make('data.date_awarded')->label('Date Awarded')->date(),
+                Tables\Columns\TextColumn::make('data.name')->label('Name of Activity')->wrap(),
+                Tables\Columns\TextColumn::make('data.community_name')->label('Name of Community'),
+                Tables\Columns\TextColumn::make('data.role')->label('Role')->badge(),
+                Tables\Columns\TextColumn::make('data.activity_date')->label('Activity Date')->date(),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -36,15 +38,18 @@ class MentorshipWidget extends BaseWidget
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
                         $data['application_id'] = Auth::user()->activeApplication->id;
-                        $data['category'] = 'KRA I';
-                        $data['type'] = 'mentorship-competition';
+                        $data['category'] = 'KRA III';
+                        $data['type'] = 'extension-social-responsibility';
                         return $data;
                     })
-                    ->modalHeading('Submit Mentorship Service (Competition)')
+                    ->modalHeading('Submit New Social Responsibility Project')
                     ->modalWidth('3xl'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()->form($this->getFormSchema())->modalWidth('3xl'),
+                Tables\Actions\EditAction::make()
+                    ->form($this->getFormSchema())
+                    ->modalHeading('Edit Social Responsibility Project')
+                    ->modalWidth('3xl'),
                 Tables\Actions\DeleteAction::make(),
             ]);
     }
@@ -52,26 +57,30 @@ class MentorshipWidget extends BaseWidget
     protected function getFormSchema(): array
     {
         return [
-            TextInput::make('data.competition_name')
-                ->label('Name of Academic Competition')
+            Textarea::make('data.name')
+                ->label('Name of Community Extension Activity')
                 ->required()
                 ->columnSpanFull(),
-            TextInput::make('data.sponsor')
-                ->label('Name of Sponsor Organization')
+            TextInput::make('data.community_name')
+                ->label('Name of Community')
                 ->required(),
-            TextInput::make('data.award')
-                ->label('Award Received')
+            TextInput::make('data.beneficiary_count')
+                ->label('No. of Beneficiaries')
+                ->numeric()
                 ->required(),
-            DatePicker::make('data.date_awarded')
-                ->label('Date Awarded')
+            TextInput::make('data.role')
+                ->label('Role')
+                ->required(),
+            DatePicker::make('data.activity_date')
+                ->label('Activity Date')
                 ->required(),
             FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s)')
+                ->label('Proof Document(s) (Evidence Link)')
                 ->multiple()
                 ->reorderable()
                 ->required()
                 ->disk('private')
-                ->directory('proof-documents/mentorship')
+                ->directory('proof-documents/kra3-social')
                 ->columnSpanFull(),
         ];
     }
