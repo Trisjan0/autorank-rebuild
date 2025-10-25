@@ -8,6 +8,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
 use Filament\Tables;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
@@ -25,6 +26,11 @@ class PublishedPapersWidget extends BaseWidget
     protected static string $view = 'filament.instructor.widgets.k-r-a2.published-papers-widget';
 
     public ?string $activeTable = 'sole_authorship';
+
+    public function updatedActiveTable(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -54,23 +60,32 @@ class PublishedPapersWidget extends BaseWidget
 
     protected function getTableColumns(): array
     {
-        $commonColumns = [
-            Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
-            Tables\Columns\TextColumn::make('data.research_type')
-                ->label('Research Type')
-                ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
-                ->badge(),
-            Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
-            Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
-        ];
-
-        if ($this->activeTable === 'co_authorship') {
-            $commonColumns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')
-                ->label('% Contribution')
-                ->suffix('%');
-        }
-
-        return $commonColumns;
+        return match ($this->activeTable) {
+            'sole_authorship' => [
+                Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
+                Tables\Columns\TextColumn::make('data.output_type')
+                    ->label('Output Type')
+                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+            'co_authorship' => [
+                Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
+                Tables\Columns\TextColumn::make('data.output_type')
+                    ->label('Output Type')
+                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.contribution_percentage')
+                    ->label('% Contribution')
+                    ->suffix('%'),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+            default => [],
+        };
     }
 
     protected function getTableHeaderActions(): array
@@ -81,7 +96,7 @@ class PublishedPapersWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()->activeApplication->id;
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA II';
                     $data['type'] = $this->activeTable === 'sole_authorship'
                         ? 'research-sole-authorship'
@@ -114,34 +129,56 @@ class PublishedPapersWidget extends BaseWidget
         $schema = [
             Textarea::make('data.title')
                 ->label('Title of Research Output')
+                ->maxLength(255)
                 ->required()
                 ->columnSpanFull(),
-            Select::make('data.research_type')
+
+            Select::make('data.output_type')
                 ->label('Type of Research Output')
                 ->options([
-                    'research_paper' => 'Scholarly Research Paper',
-                    'educational_article' => 'Educational Article',
-                    'technical_article' => 'Technical Article',
+                    'book' => 'Book',
+                    'journal_article' => 'Journal Article',
+                    'book_chapter' => 'Book Chapter',
+                    'monograph' => 'Monograph',
+                    'other_peer_reviewed_output' => 'Other Peer-Reviewed Output',
                 ])
-                ->required(),
+                ->required()
+                ->live()
+                ->afterStateUpdated(function ($state, callable $set) {
+                    if ($state === 'journal_article') {
+                        $set('data.reviewer', null);
+                    } else {
+                        $set('data.indexing_body', null);
+                    }
+                }),
+
             TextInput::make('data.publisher')
                 ->label('Name of Journal / Publisher')
+                ->maxLength(150)
                 ->required(),
+
             TextInput::make('data.reviewer')
                 ->label('Reviewer or Its Equivalent')
-                ->required(),
+                ->maxLength(150)
+                ->required()
+                ->visible(fn(Get $get): bool => $get('data.output_type') !== 'journal_article'),
+
             TextInput::make('data.indexing_body')
                 ->label('International Indexing Body')
-                ->required(),
+                ->maxLength(150)
+                ->required()
+                ->visible(fn(Get $get): bool => $get('data.output_type') === 'journal_article'),
+
             DatePicker::make('data.date_published')
                 ->label('Date Published')
+                ->maxDate(now())
                 ->required(),
         ];
 
         if ($this->activeTable === 'co_authorship') {
             $schema[] = TextInput::make('data.contribution_percentage')
                 ->label('% Contribution')
-                ->numeric()
+                ->integer()
                 ->minValue(1)
                 ->maxValue(100)
                 ->required();

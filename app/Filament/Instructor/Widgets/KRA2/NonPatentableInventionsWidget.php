@@ -26,6 +26,11 @@ class NonPatentableInventionsWidget extends BaseWidget
 
     public ?string $activeTable = 'software_new_sole';
 
+    public function updatedActiveTable(): void
+    {
+        $this->resetTable();
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -36,41 +41,60 @@ class NonPatentableInventionsWidget extends BaseWidget
             ->actions($this->getTableActions());
     }
 
+    protected function getActiveSubmissionType(): string
+    {
+        return match ($this->activeTable) {
+            'software_new_sole' => 'invention-software-new-sole',
+            'software_new_co' => 'invention-software-new-co',
+            'software_updated' => 'invention-software-updated',
+            'plant_animal_sole' => 'invention-plant-animal-sole',
+            'plant_animal_co' => 'invention-plant-animal-co',
+            default => 'invention-software-new-sole',
+        };
+    }
+
     protected function getTableQuery(): Builder
     {
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $this->activeTable);
+            ->where('type', $this->getActiveSubmissionType());
     }
 
     protected function getTableHeading(): string
     {
-        return Str::of($this->activeTable)->replace('_', ' ')->title() . ' Submissions';
+        return Str::of($this->activeTable)
+            ->replace('_', ' ')
+            ->replace(' co ', ' Co-Developer ')
+            ->title() . ' Submissions';
     }
 
     protected function getTableColumns(): array
     {
-        $columns = [
-            Tables\Columns\TextColumn::make('data.name')->label('Name')->wrap(),
-        ];
+        $columns = [];
+        $columns[] = Tables\Columns\TextColumn::make('data.name')->label('Name')->wrap();
 
         if (Str::startsWith($this->activeTable, 'software')) {
+            $columns[] = Tables\Columns\TextColumn::make('data.copyright_no')->label('Copyright No.');
             $columns[] = Tables\Columns\TextColumn::make('data.date_copyrighted')->label('Date Copyrighted')->date();
             $columns[] = Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized')->date();
             $columns[] = Tables\Columns\TextColumn::make('data.end_user')->label('End User(s)');
         } elseif (Str::startsWith($this->activeTable, 'plant_animal')) {
-            $columns[] = Tables\Columns\TextColumn::make('data.type')->label('Type')->badge();
+            $columns[] = Tables\Columns\TextColumn::make('data.type')->label('Type')->formatStateUsing(fn(?string $state): string => Str::title($state ?? ''))->badge();
             $columns[] = Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date();
             $columns[] = Tables\Columns\TextColumn::make('data.date_registered')->label('Date Registered')->date();
+            $columns[] = Tables\Columns\TextColumn::make('data.date_propagation')->label('Date Propagation')->date();
         }
 
-        if ($this->activeTable === 'software_new_multiple' || $this->activeTable === 'plant_animal_multiple') {
-            $columns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')
-                ->label('% Contribution')
-                ->suffix('%');
-        } elseif ($this->activeTable === 'software_updated') {
-            $columns[] = Tables\Columns\TextColumn::make('data.contribution')->label('Contribution');
+        if ($this->activeTable === 'software_new_co' || $this->activeTable === 'plant_animal_co') {
+            $columns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%');
         }
+
+        if ($this->activeTable === 'software_updated') {
+            $columns[] = Tables\Columns\TextColumn::make('data.developer_role')->label('Role')->badge();
+            $columns[] = Tables\Columns\TextColumn::make('data.update_details')->label('Update Details')->wrap()->limit(50);
+        }
+
+        $columns[] = Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2);
 
         return $columns;
     }
@@ -83,9 +107,9 @@ class NonPatentableInventionsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()->activeApplication->id;
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA II';
-                    $data['type'] = $this->activeTable;
+                    $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
@@ -108,86 +132,36 @@ class NonPatentableInventionsWidget extends BaseWidget
     {
         $schema = [];
 
-        if (Str::startsWith($this->activeTable, 'software_new')) {
+        if (Str::startsWith($this->activeTable, 'software')) {
             $schema = [
-                TextInput::make('data.name')
-                    ->label('Name of the Software')
-                    ->required()
-                    ->columnSpanFull(),
-                DatePicker::make('data.date_copyrighted')
-                    ->label('Date Copyrighted')
-                    ->required(),
-                DatePicker::make('data.date_utilized')
-                    ->label('Date Utilized')
-                    ->required(),
-                TextInput::make('data.end_user')
-                    ->label('Name of End User/s')
-                    ->required(),
+                TextInput::make('data.name')->label('Name of the Software')->maxLength(255)->required()->columnSpanFull(),
+                TextInput::make('data.copyright_no')->label('Copyright No.')->maxLength(100)->required(),
+                DatePicker::make('data.date_copyrighted')->label('Date Copyrighted')->maxDate(now())->required(),
+                DatePicker::make('data.date_utilized')->label('Date Utilized (If applicable)')->maxDate(now()),
+                TextInput::make('data.end_user')->label('Name of End User/s')->maxLength(255)->required(),
             ];
-        } elseif ($this->activeTable === 'software_updated') {
-            $schema = [
-                TextInput::make('data.name')
-                    ->label('Name of the Software')
-                    ->required()
-                    ->columnSpanFull(),
-                DatePicker::make('data.date_copyrighted')
-                    ->label('Date Copyrighted')
-                    ->required(),
-                DatePicker::make('data.date_utilized')
-                    ->label('Date Utilized')
-                    ->required(),
-                TextInput::make('data.contribution')
-                    ->label('Contribution (e.g., Sole, 50%)')
-                    ->required(),
-                Textarea::make('data.new_features')
-                    ->label('Specify New Features')
-                    ->required()
-                    ->columnSpanFull(),
-                TextInput::make('data.end_user')
-                    ->label('Name of End User/s')
-                    ->required(),
-            ];
+            if ($this->activeTable === 'software_new_co') {
+                $schema[] = TextInput::make('data.contribution_percentage')->label('% Contribution')->integer()->minValue(1)->maxValue(100)->required();
+            } elseif ($this->activeTable === 'software_updated') {
+                $schema[] = Select::make('data.developer_role')->label('Developer Role')->options(['Sole Developer' => 'Sole Developer', 'Co-developer' => 'Co-developer'])->required();
+                $schema[] = Textarea::make('data.update_details')->label('Specify New Features / Update Details')->required()->columnSpanFull();
+            }
         } elseif (Str::startsWith($this->activeTable, 'plant_animal')) {
             $schema = [
-                TextInput::make('data.name')
-                    ->label('Name of Plant Variety, Animal Breed, or Microbial Strain')
-                    ->required()
-                    ->columnSpanFull(),
-                Select::make('data.type')
-                    ->label('Type')
-                    ->options([
-                        'plant' => 'Plant',
-                        'animal' => 'Animal',
-                        'microbe' => 'Microbe',
-                    ])
-                    ->required(),
-                DatePicker::make('data.date_completed')
-                    ->label('Date Completed')
-                    ->required(),
-                DatePicker::make('data.date_registered')
-                    ->label('Date Registered')
-                    ->required(),
-                DatePicker::make('data.date_propagation')
-                    ->label('Date of Propagation based on Certification')
-                    ->required(),
+                TextInput::make('data.name')->label('Name of Plant Variety, Animal Breed, or Microbial Strain')->maxLength(255)->required()->columnSpanFull(),
+                Select::make('data.type')->label('Type')->options(['plant' => 'Plant', 'animal' => 'Animal', 'microbe' => 'Microbe'])->required(),
+                DatePicker::make('data.date_completed')->label('Date Completed')->maxDate(now())->required(),
+                DatePicker::make('data.date_registered')->label('Date Registered')->maxDate(now())->required(),
+                DatePicker::make('data.date_propagation')->label('Date of Propagation based on Certification')->maxDate(now())->required(),
             ];
-        }
-
-        if ($this->activeTable === 'software_new_multiple' || $this->activeTable === 'plant_animal_multiple') {
-            $schema[] = TextInput::make('data.contribution_percentage')
-                ->label('% Contribution')
-                ->numeric()
-                ->minValue(1)
-                ->maxValue(100)
-                ->required();
+            if ($this->activeTable === 'plant_animal_co') {
+                $schema[] = TextInput::make('data.contribution_percentage')->label('% Contribution')->integer()->minValue(1)->maxValue(100)->required();
+            }
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
             ->label('Proof Document(s) (Evidence Link)')
-            ->multiple()
-            ->reorderable()
-            ->required()
-            ->disk('private')
+            ->multiple()->reorderable()->required()->disk('private')
             ->directory(fn(): string => 'proof-documents/kra2-nonpatent/' . $this->activeTable)
             ->columnSpanFull();
 

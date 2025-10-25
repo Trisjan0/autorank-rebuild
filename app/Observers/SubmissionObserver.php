@@ -45,6 +45,78 @@ class SubmissionObserver
             'mentorship-mentor' => $this->scoringService
                 ->calculateMentorshipMentorScore($submission->data),
 
+            // KRA II, Criterion A (Published Outputs)
+            'research-sole-authorship' => $this->scoringService
+                ->calculateResearchSoleScore($submission->data),
+
+            'research-co-authorship' => $this->scoringService
+                ->calculateResearchCoAuthorScore($submission->data),
+
+            // KRA II, Criterion A (Translated Outputs)
+            'research-translated-lead' => $this->scoringService
+                ->calculateTranslatedOutputLeadScore($submission->data),
+
+            'research-translated-contributor' => $this->scoringService
+                ->calculateTranslatedOutputContributorScore($submission->data),
+
+            // KRA II, Criterion A (Citations)
+            'research-citation-local' => $this->scoringService
+                ->calculateResearchCitationLocalScore($submission->data),
+
+            'research-citation-international' => $this->scoringService
+                ->calculateResearchCitationInternationalScore($submission->data),
+
+            // KRA II, Criterion B (Patented Inventions)
+            'invention-patent-sole' => $this->scoringService
+                ->calculateInventionPatentSoleScore($submission->data),
+
+            'invention-patent-co-inventor' => $this->scoringService
+                ->calculateInventionPatentCoInventorScore($submission->data),
+
+            // KRA II, Criterion B (Utility/Design)
+            'invention-utility-design-sole' => $this->scoringService
+                ->calculateUtilityDesignSoleScore($submission->data),
+
+            'invention-utility-design-co-inventor' => $this->scoringService
+                ->calculateUtilityDesignCoInventorScore($submission->data),
+
+            // KRA II, Criterion B (Commercialized)
+            'invention-commercialized-local' => $this->scoringService
+                ->calculateCommercializedLocalScore($submission->data),
+
+            'invention-commercialized-international' => $this->scoringService
+                ->calculateCommercializedInternationalScore($submission->data),
+
+            // KRA II, Criterion B (Non-Patentable: Software)
+            'invention-software-new-sole' => $this->scoringService
+                ->calculateSoftwareNewSoleScore($submission->data),
+
+            'invention-software-new-co' => $this->scoringService
+                ->calculateSoftwareNewCoDeveloperScore($submission->data),
+
+            'invention-software-updated' => $this->scoringService
+                ->calculateSoftwareUpdatedScore($submission->data),
+
+            // KRA II, Criterion B (Non-Patentable: Plant/Animal/Microbe)
+            'invention-plant-animal-sole' => $this->scoringService
+                ->calculatePlantAnimalSoleScore($submission->data),
+
+            'invention-plant-animal-co' => $this->scoringService
+                ->calculatePlantAnimalCoDeveloperScore($submission->data),
+
+            // KRA II, Criterion C
+            'creative-performing-art' => $this->scoringService
+                ->calculateCreativePerformingArtScore($submission->data),
+
+            'creative-exhibition' => $this->scoringService
+                ->calculateCreativeExhibitionScore($submission->data),
+
+            'creative-juried-design' => $this->scoringService
+                ->calculateCreativeJuriedDesignScore($submission->data),
+
+            'creative-literary-publication' => $this->scoringService
+                ->calculateCreativeLiteraryPublicationScore($submission->data),
+
             default => 0.0,
         };
 

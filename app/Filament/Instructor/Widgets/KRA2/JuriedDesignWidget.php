@@ -5,12 +5,14 @@ namespace App\Filament\Instructor\Widgets\KRA2;
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class JuriedDesignWidget extends BaseWidget
 {
@@ -24,12 +26,16 @@ class JuriedDesignWidget extends BaseWidget
                     ->where('user_id', Auth::id())
                     ->where('type', 'creative-juried-design')
             )
-            ->heading('Submissions')
+            ->heading('Juried Design Submissions')
             ->columns([
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
-                Tables\Columns\TextColumn::make('data.classification')->label('Classification'),
+                Tables\Columns\TextColumn::make('data.classification')
+                    ->label('Classification')
+                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->badge(),
                 Tables\Columns\TextColumn::make('data.reviewer')->label('Reviewer/Evaluator'),
                 Tables\Columns\TextColumn::make('data.date_activity')->label('Activity Date')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -37,7 +43,7 @@ class JuriedDesignWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()->activeApplication->id;
+                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                         $data['category'] = 'KRA II';
                         $data['type'] = 'creative-juried-design';
                         return $data;
@@ -60,21 +66,31 @@ class JuriedDesignWidget extends BaseWidget
             Textarea::make('data.title')
                 ->label('Title of Design')
                 ->required()
+                ->maxLength(255)
                 ->columnSpanFull(),
-            TextInput::make('data.classification')
+            Select::make('data.classification')
                 ->label('Classification')
+                ->options([
+                    'architecture' => 'Architecture',
+                    'engineering' => 'Engineering',
+                    'industrial_design' => 'Industrial Design',
+                ])
                 ->required(),
             TextInput::make('data.reviewer')
                 ->label('Reviewer, Evaluator or Its Equivalent')
+                ->maxLength(255)
                 ->required(),
             DatePicker::make('data.date_activity')
                 ->label('Activity/Exhibition Date')
+                ->maxDate(now())
                 ->required(),
             TextInput::make('data.venue')
                 ->label('Venue of Activity/Exhibit')
+                ->maxLength(255)
                 ->required(),
             TextInput::make('data.organizer')
                 ->label('Organizer')
+                ->maxLength(255)
                 ->required(),
             FileUpload::make('google_drive_file_id')
                 ->label('Proof Document(s) (Evidence Link)')

@@ -97,7 +97,7 @@ class InstructionalMaterialsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id; // temporarily allow no application id submission
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA I';
 
                     $typeMap = [
@@ -184,6 +184,7 @@ class InstructionalMaterialsWidget extends BaseWidget
                 $schema = [
                     TextInput::make('data.program_name')
                         ->label('Name of Academic Degree Program (provide complete name)')
+                        ->maxLength(150)
                         ->required()
                         ->columnSpanFull(),
 
@@ -197,6 +198,7 @@ class InstructionalMaterialsWidget extends BaseWidget
 
                     TextInput::make('data.board_approval')
                         ->label('Board Approval (Board Resolution No.)')
+                        ->maxLength(150)
                         ->required(),
 
                     Select::make('data.academic_year_implemented')

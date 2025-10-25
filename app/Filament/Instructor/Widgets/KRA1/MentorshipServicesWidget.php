@@ -110,7 +110,7 @@ class MentorshipServicesWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id; // temporarily allow no application id submission
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA I';
 
                     $typeMap = [
@@ -181,10 +181,10 @@ class MentorshipServicesWidget extends BaseWidget
                 ...$this->getAcademicYearFields(),
             ],
             'mentor' => [
-                TextInput::make('data.competition_name')->label('Name of the Academic Competition')->required()->columnSpanFull(),
-                TextInput::make('data.sponsor')->label('Name of Sponsor Organization')->required(),
-                TextInput::make('data.award_received')->label('Award Received')->required(),
-                DatePicker::make('data.date_awarded')->label('Date Awarded')->required(),
+                TextInput::make('data.competition_name')->label('Name of the Academic Competition')->maxLength(150)->required()->columnSpanFull(),
+                TextInput::make('data.sponsor')->label('Name of Sponsor Organization')->maxLength(150)->required(),
+                TextInput::make('data.award_received')->label('Award Received')->maxLength(150)->required(),
+                DatePicker::make('data.date_awarded')->label('Date Awarded')->maxDate(now())->required(),
             ],
             default => [],
         };

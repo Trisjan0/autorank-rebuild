@@ -24,7 +24,12 @@ class PatentedInventionsWidget extends BaseWidget
 
     protected static string $view = 'filament.instructor.widgets.k-r-a2.patented-inventions-widget';
 
-    public ?string $activeTable = 'invention_sole';
+    public ?string $activeTable = 'invention_patent_sole';
+
+    public function updatedActiveTable(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -36,42 +41,67 @@ class PatentedInventionsWidget extends BaseWidget
             ->actions($this->getTableActions());
     }
 
+    protected function getActiveSubmissionType(): string
+    {
+        return match ($this->activeTable) {
+            'invention_patent_sole' => 'invention-patent-sole',
+            'invention_patent_co' => 'invention-patent-co-inventor',
+            'utility_design_sole' => 'invention-utility-design-sole',
+            'utility_design_co' => 'invention-utility-design-co-inventor',
+            'commercialized_local' => 'invention-commercialized-local',
+            'commercialized_intl' => 'invention-commercialized-international',
+            default => 'invention-patent-sole',
+        };
+    }
+
     protected function getTableQuery(): Builder
     {
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $this->activeTable);
+            ->where('type', $this->getActiveSubmissionType());
     }
 
     protected function getTableHeading(): string
     {
-        return Str::of($this->activeTable)->replace('_', ' ')->title() . ' Submissions';
+        return Str::of($this->activeTable)
+            ->replace('_', ' ')
+            ->replace(' co ', ' Co-Inventor ')
+            ->replace(' intl', ' International')
+            ->title() . ' Submissions';
     }
 
     protected function getTableColumns(): array
     {
-        $columns = [
-            Tables\Columns\TextColumn::make('data.name')->label('Name')->wrap(),
-        ];
+        $columns = [];
 
-        if (Str::startsWith($this->activeTable, 'invention')) {
-            $columns[] = Tables\Columns\TextColumn::make('data.application_date')->label('Application Date')->date();
-            $columns[] = Tables\Columns\TextColumn::make('data.patent_stage')->label('Patent Stage');
-        } elseif (Str::startsWith($this->activeTable, 'utility_design')) {
-            $columns[] = Tables\Columns\TextColumn::make('data.patent_type')->label('Type of Patent')->badge();
-            $columns[] = Tables\Columns\TextColumn::make('data.application_date')->label('Application Date')->date();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_granted')->label('Date Granted')->date();
-        } elseif (Str::startsWith($this->activeTable, 'commercialized')) {
-            $columns[] = Tables\Columns\TextColumn::make('data.patent_type')->label('Type of Product')->badge();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_patented')->label('Date Patented')->date();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_commercialized')->label('Date Commercialized')->date();
+        $columns[] = Tables\Columns\TextColumn::make('data.name')->label('Name')->wrap();
+
+        switch ($this->activeTable) {
+            case 'invention_patent_sole':
+            case 'invention_patent_co':
+                $columns[] = Tables\Columns\TextColumn::make('data.application_date')->label('Application Date')->date();
+                $columns[] = Tables\Columns\TextColumn::make('data.patent_stage')->label('Patent Stage')->formatStateUsing(fn(?string $state): string => Str::title($state ?? ''))->badge();
+                break;
+            case 'utility_design_sole':
+            case 'utility_design_co':
+                $columns[] = Tables\Columns\TextColumn::make('data.patent_type')->label('Type')->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())->badge();
+                $columns[] = Tables\Columns\TextColumn::make('data.application_date')->label('Application Date')->date();
+                $columns[] = Tables\Columns\TextColumn::make('data.date_granted')->label('Date Granted')->date();
+                break;
+            case 'commercialized_local':
+            case 'commercialized_intl':
+                $columns[] = Tables\Columns\TextColumn::make('data.patent_type')->label('Type of Product');
+                $columns[] = Tables\Columns\TextColumn::make('data.date_patented')->label('Date Patented')->date();
+                $columns[] = Tables\Columns\TextColumn::make('data.date_commercialized')->label('Date Commercialized')->date();
+                $columns[] = Tables\Columns\TextColumn::make('data.area_commercialized')->label('Area Commercialized');
+                break;
         }
 
-        if (Str::contains($this->activeTable, 'multiple')) {
-            $columns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')
-                ->label('% Contribution')
-                ->suffix('%');
+        if (in_array($this->activeTable, ['invention_patent_co', 'utility_design_co'])) {
+            $columns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%');
         }
+
+        $columns[] = Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2);
 
         return $columns;
     }
@@ -84,9 +114,9 @@ class PatentedInventionsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()->activeApplication->id;
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA II';
-                    $data['type'] = $this->activeTable;
+                    $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
@@ -109,78 +139,44 @@ class PatentedInventionsWidget extends BaseWidget
     {
         $schema = [];
 
-        if (Str::startsWith($this->activeTable, 'invention')) {
-            $schema = [
-                Textarea::make('data.name')
-                    ->label('Name of the Invention')
-                    ->required()
-                    ->columnSpanFull(),
-                DatePicker::make('data.application_date')
-                    ->label('Application Date')
-                    ->required(),
-                TextInput::make('data.patent_stage')
-                    ->label('Patent Application Stage')
-                    ->required(),
-                DatePicker::make('data.date_granted')
-                    ->label('Date Accepted, Published or Granted')
-                    ->required(),
-            ];
-        } elseif (Str::startsWith($this->activeTable, 'utility_design')) {
-            $schema = [
-                Textarea::make('data.name')
-                    ->label('Name of Invention')
-                    ->required()
-                    ->columnSpanFull(),
-                Select::make('data.patent_type')
-                    ->label('Type of Patent')
-                    ->options([
-                        'utility_model' => 'Utility Model',
-                        'industrial_design' => 'Industrial Design',
-                    ])
-                    ->required(),
-                DatePicker::make('data.application_date')
-                    ->label('Date of Application')
-                    ->required(),
-                DatePicker::make('data.date_granted')
-                    ->label('Date Granted')
-                    ->required(),
-            ];
-        } elseif (Str::startsWith($this->activeTable, 'commercialized')) {
-            $schema = [
-                Textarea::make('data.name')
-                    ->label('Name of Patented Product')
-                    ->required()
-                    ->columnSpanFull(),
-                TextInput::make('data.patent_type')
-                    ->label('Type of Product')
-                    ->required(),
-                DatePicker::make('data.date_patented')
-                    ->label('Date Patented')
-                    ->required(),
-                DatePicker::make('data.date_commercialized')
-                    ->label('Date Product was First Commercialized')
-                    ->required(),
-                TextInput::make('data.area_commercialized')
-                    ->label('Area/Place Commercialized')
-                    ->required(),
-            ];
+        switch ($this->activeTable) {
+            case 'invention_patent_sole':
+            case 'invention_patent_co':
+                $schema = [
+                    Textarea::make('data.name')->label('Name of the Invention')->maxLength(255)->required()->columnSpanFull(),
+                    DatePicker::make('data.application_date')->label('Application Date')->maxDate(now())->required(),
+                    Select::make('data.patent_stage')->label('Patent Application Stage')->options(['accepted' => 'Accepted', 'published' => 'Published', 'granted' => 'Granted'])->required(),
+                    DatePicker::make('data.date_granted')->label('Date Accepted / Published / Granted')->maxDate(now())->required(),
+                ];
+                break;
+            case 'utility_design_sole':
+            case 'utility_design_co':
+                $schema = [
+                    Textarea::make('data.name')->label('Name of Invention/Design')->maxLength(255)->required()->columnSpanFull(),
+                    Select::make('data.patent_type')->label('Type of Patent')->options(['utility_model' => 'Utility Model', 'industrial_design' => 'Industrial Design'])->required(),
+                    DatePicker::make('data.application_date')->label('Date of Application')->maxDate(now())->required(),
+                    DatePicker::make('data.date_granted')->label('Date Granted')->maxDate(now())->required(),
+                ];
+                break;
+            case 'commercialized_local':
+            case 'commercialized_intl':
+                $schema = [
+                    Textarea::make('data.name')->label('Name of Patented Product')->maxLength(255)->required()->columnSpanFull(),
+                    TextInput::make('data.patent_type')->label('Type of Product')->maxLength(100)->required(),
+                    DatePicker::make('data.date_patented')->label('Date Patented')->maxDate(now())->required(),
+                    DatePicker::make('data.date_commercialized')->label('Date Product was First Commercialized')->maxDate(now())->required(),
+                    TextInput::make('data.area_commercialized')->label('Area/Place Commercialized')->maxLength(150)->required(),
+                ];
+                break;
         }
 
-        if (Str::contains($this->activeTable, 'multiple')) {
-            $schema[] = TextInput::make('data.contribution_percentage')
-                ->label('% Contribution')
-                ->numeric()
-                ->minValue(1)
-                ->maxValue(100)
-                ->required();
+        if (in_array($this->activeTable, ['invention_patent_co', 'utility_design_co'])) {
+            $schema[] = TextInput::make('data.contribution_percentage')->label('% Contribution')->integer()->minValue(1)->maxValue(100)->required();
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
             ->label('Proof Document(s) (Evidence Link)')
-            ->multiple()
-            ->reorderable()
-            ->required()
-            ->disk('private')
+            ->multiple()->reorderable()->required()->disk('private')
             ->directory(fn(): string => 'proof-documents/kra2-patents/' . $this->activeTable)
             ->columnSpanFull();
 

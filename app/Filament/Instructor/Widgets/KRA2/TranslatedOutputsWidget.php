@@ -15,6 +15,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class TranslatedOutputsWidget extends BaseWidget
 {
@@ -23,6 +24,11 @@ class TranslatedOutputsWidget extends BaseWidget
     protected static string $view = 'filament.instructor.widgets.k-r-a2.translated-outputs-widget';
 
     public ?string $activeTable = 'lead_researcher';
+
+    public function updatedActiveTable(): void
+    {
+        $this->resetTable();
+    }
 
     public function table(Table $table): Table
     {
@@ -34,38 +40,48 @@ class TranslatedOutputsWidget extends BaseWidget
             ->actions($this->getTableActions());
     }
 
+    protected function getActiveSubmissionType(): string
+    {
+        return $this->activeTable === 'lead_researcher'
+            ? 'research-translated-lead'
+            : 'research-translated-contributor';
+    }
+
+
     protected function getTableQuery(): Builder
     {
-        $type = $this->activeTable === 'lead_researcher' ? 'research-lead-researcher' : 'research-contributor';
-
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $type);
+            ->where('type', $this->getActiveSubmissionType());
     }
 
     protected function getTableHeading(): string
     {
-        return $this->activeTable === 'lead_researcher'
-            ? 'Lead Researcher Submissions'
-            : 'Contributor Submissions';
+        return Str::of($this->activeTable)->replace('_', ' ')->title() . ' Submissions';
     }
 
     protected function getTableColumns(): array
     {
-        $commonColumns = [
-            Tables\Columns\TextColumn::make('data.title')->label('Title of Research')->wrap(),
-            Tables\Columns\TextColumn::make('data.project_name')->label('Project/Policy/Product Name')->wrap(),
-            Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
-            Tables\Columns\TextColumn::make('data.date_implemented')->label('Date Implemented')->date(),
-        ];
-
-        if ($this->activeTable === 'contributor') {
-            $commonColumns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')
-                ->label('% Contribution')
-                ->suffix('%');
-        }
-
-        return $commonColumns;
+        return match ($this->activeTable) {
+            'lead_researcher' => [
+                Tables\Columns\TextColumn::make('data.title')->label('Title of Research')->wrap(),
+                Tables\Columns\TextColumn::make('data.project_name')->label('Project/Policy/Product Name')->wrap(),
+                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
+                Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+            'contributor' => [
+                Tables\Columns\TextColumn::make('data.title')->label('Title of Research')->wrap(),
+                Tables\Columns\TextColumn::make('data.project_name')->label('Project/Policy/Product Name')->wrap(),
+                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
+                Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date(),
+                Tables\Columns\TextColumn::make('data.contribution_percentage')
+                    ->label('% Contribution')
+                    ->suffix('%'),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ],
+            default => [],
+        };
     }
 
     protected function getTableHeaderActions(): array
@@ -76,18 +92,13 @@ class TranslatedOutputsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()->activeApplication->id;
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA II';
-
-                    $data['type'] = $this->activeTable === 'lead_researcher'
-                        ? 'research-lead-researcher'
-                        : 'research-contributor';
+                    $data['type'] = $this->getActiveSubmissionType();
 
                     return $data;
                 })
-                ->modalHeading(fn(): string => $this->activeTable === 'lead_researcher'
-                    ? 'Submit New Translated Output (Lead Researcher)'
-                    : 'Submit New Translated Output (Contributor)')
+                ->modalHeading(fn(): string => 'Submit New Translated Output (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')
                 ->modalWidth('3xl'),
         ];
     }
@@ -97,9 +108,7 @@ class TranslatedOutputsWidget extends BaseWidget
         return [
             EditAction::make()
                 ->form($this->getFormSchema())
-                ->modalHeading(fn(): string => $this->activeTable === 'lead_researcher'
-                    ? 'Edit Translated Output (Lead Researcher)'
-                    : 'Edit Translated Output (Contributor)')
+                ->modalHeading(fn(): string => 'Edit Translated Output (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')
                 ->modalWidth('3xl'),
             DeleteAction::make(),
         ];
@@ -110,27 +119,32 @@ class TranslatedOutputsWidget extends BaseWidget
         $schema = [
             Textarea::make('data.title')
                 ->label('Title of Research')
+                ->maxLength(255)
                 ->required()
                 ->columnSpanFull(),
             DatePicker::make('data.date_completed')
                 ->label('Date Completed')
+                ->maxDate(now())
                 ->required(),
             TextInput::make('data.funding_source')
                 ->label('Funding Source')
+                ->maxLength(150)
                 ->required(),
             Textarea::make('data.project_name')
                 ->label('Name of Project, Policy or Product')
+                ->maxLength(255)
                 ->required()
                 ->columnSpanFull(),
-            DatePicker::make('data.date_implemented')
-                ->label('Date Implemented, Adopted or Developed')
+            DatePicker::make('data.date_utilized')
+                ->label('Date Utilized / Implemented / Adopted / Developed')
+                ->maxDate(now())
                 ->required(),
         ];
 
         if ($this->activeTable === 'contributor') {
             $schema[] = TextInput::make('data.contribution_percentage')
                 ->label('% Contribution')
-                ->numeric()
+                ->integer()
                 ->minValue(1)
                 ->maxValue(100)
                 ->required();
@@ -142,9 +156,7 @@ class TranslatedOutputsWidget extends BaseWidget
             ->reorderable()
             ->required()
             ->disk('private')
-            ->directory(fn(): string => $this->activeTable === 'lead_researcher'
-                ? 'proof-documents/kra2-lead-researcher'
-                : 'proof-documents/kra2-contributor')
+            ->directory(fn(): string => 'proof-documents/kra2-translated/' . $this->activeTable)
             ->columnSpanFull();
 
         return $schema;
