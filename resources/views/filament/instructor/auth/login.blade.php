@@ -1,17 +1,30 @@
+<style>
+    .google-btn-container:hover {
+        filter: brightness(90%);
+        --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+        box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+    }
+
+    .google-btn-container:hover .google-logo-div {
+        filter: brightness(111%);
+    }
+</style>
+
 <div>
     <div>
-        <div>
+        <div class="text-center">
             <div class="text-center">
                 <h2 class="text-2xl font-bold tracking-tight text-gray-950 dark:text-white">
                     Sign In to AutoRank
                 </h2>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Please sign in with your Google account to utilize all features of Autorank.
+                    Please sign in with your Google account to utilize all the features of AutoRank.
                 </p>
             </div>
-            
+            <br>
             <a href="{{ route('google.redirect') }}"
-               class="flex w-full items-center justify-center gap-x-3 border-4 border-[#5490f4]">
+               class="google-btn-container inline-flex items-stretch border-2 border-primary-500 h-auto w-auto">
                 <div class="bg-white p-2">
                     <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="30" height="30" viewBox="0 0 48 48">
                         <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
@@ -20,7 +33,7 @@
                         <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
                     </svg>
                 </div>
-                <span class="bg-[#5490f4] text-white p-4">Sign in with Google</span>
+                <span class="google-btn-span flex items-center bg-primary-500 text-white px-6">Sign in with Google</span>
             </a>
         </div>
     </div>
