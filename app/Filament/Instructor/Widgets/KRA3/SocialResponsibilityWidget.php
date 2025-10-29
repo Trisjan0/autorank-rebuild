@@ -5,12 +5,17 @@ namespace App\Filament\Instructor\Widgets\KRA3;
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class SocialResponsibilityWidget extends BaseWidget
 {
@@ -22,65 +27,84 @@ class SocialResponsibilityWidget extends BaseWidget
             ->query(
                 Submission::query()
                     ->where('user_id', Auth::id())
-                    ->where('type', 'extension-social-responsibility')
+                    ->where('category', 'KRA III')
+                    ->where('type', 'social_responsibility')
             )
-            ->heading('Submissions')
+            ->heading('Institutional Social Responsibility Submissions')
             ->columns([
-                Tables\Columns\TextColumn::make('data.name')->label('Name of Activity')->wrap(),
-                Tables\Columns\TextColumn::make('data.community_name')->label('Name of Community'),
-                Tables\Columns\TextColumn::make('data.role')->label('Role')->badge(),
+                Tables\Columns\TextColumn::make('data.activity_title')->label('Activity Title')->wrap(),
+                Tables\Columns\TextColumn::make('data.community_name')->label('Community Name'),
+                Tables\Columns\TextColumn::make('data.beneficiary_count')->label('Beneficiaries'),
+                Tables\Columns\TextColumn::make('data.role')
+                    ->label('Role')
+                    ->formatStateUsing(fn(?string $state): string => Str::title($state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('data.activity_date')->label('Activity Date')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Add')
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()->activeApplication->id;
+                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                         $data['category'] = 'KRA III';
-                        $data['type'] = 'extension-social-responsibility';
+                        $data['type'] = 'social_responsibility';
                         return $data;
                     })
-                    ->modalHeading('Submit New Social Responsibility Project')
+                    ->modalHeading('Submit New Social Responsibility Activity')
                     ->modalWidth('3xl'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->form($this->getFormSchema())
-                    ->modalHeading('Edit Social Responsibility Project')
+                    ->modalHeading('Edit Social Responsibility Activity')
                     ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ]);
     }
 
     protected function getFormSchema(): array
     {
         return [
-            Textarea::make('data.name')
+            Textarea::make('data.activity_title')
                 ->label('Name of Community Extension Activity')
                 ->required()
+                ->maxLength(65535)
                 ->columnSpanFull(),
+
             TextInput::make('data.community_name')
-                ->label('Name of Community')
-                ->required(),
+                ->label('Name of Community/Sponsoring Organization')
+                ->required()
+                ->maxLength(255),
+
             TextInput::make('data.beneficiary_count')
                 ->label('No. of Beneficiaries')
-                ->numeric()
-                ->required(),
-            TextInput::make('data.role')
+                ->integer()
+                ->required()
+                ->minValue(1),
+
+            Select::make('data.role')
                 ->label('Role')
+                ->options([
+                    'head' => 'Head',
+                    'participant' => 'Participant',
+                ])
                 ->required(),
+
             DatePicker::make('data.activity_date')
                 ->label('Activity Date')
-                ->required(),
+                ->required()
+                ->maxDate(now()),
+
             FileUpload::make('google_drive_file_id')
                 ->label('Proof Document(s) (Evidence Link)')
                 ->multiple()
                 ->reorderable()
                 ->required()
                 ->disk('private')
-                ->directory('proof-documents/kra3-social')
+                ->directory('proof-documents/kra3-social-resp')
                 ->columnSpanFull(),
         ];
     }

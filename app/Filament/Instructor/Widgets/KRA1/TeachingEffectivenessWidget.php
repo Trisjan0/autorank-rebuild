@@ -153,13 +153,23 @@ class TeachingEffectivenessWidget extends BaseWidget
                 ->schema([
                     TextInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem1")
                         ->label('1st Semester Rating')
-                        ->integer()
+                        ->type('number')
+                        ->step('0.01')
+                        ->rules(['numeric', 'between:0,100'])
+                        ->extraInputAttributes([
+                            'onkeydown' => "return !['e','E','+','-'].includes(event.key);",
+                        ])
                         ->minValue(0)
                         ->maxValue(100)
                         ->required(),
                     TextInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem2")
                         ->label('2nd Semester Rating')
-                        ->integer()
+                        ->type('number')
+                        ->step('0.01')
+                        ->rules(['numeric', 'between:0,100'])
+                        ->extraInputAttributes([
+                            'onkeydown' => "return !['e','E','+','-'].includes(event.key);",
+                        ])
                         ->minValue(0)
                         ->maxValue(100)
                         ->required(),

@@ -4,9 +4,13 @@ namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
 use Filament\Tables;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
@@ -15,12 +19,11 @@ class QualityOfExtensionWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
-    protected function submissionExists(): bool
+    protected function submissionExistsForCurrentType(): bool
     {
-        $activeApplicationId = Auth::user()->activeApplication->id ?? null;
-
+        $activeApplicationId = Auth::user()?->activeApplication?->id;
         if (!$activeApplicationId) {
-            return true;
+            return false;  // temporarily allow no application id submission
         }
 
         return Submission::where('user_id', Auth::id())
@@ -29,83 +32,147 @@ class QualityOfExtensionWidget extends BaseWidget
             ->exists();
     }
 
+    protected function getCurrentSubmissionId(): ?int
+    {
+        $activeApplicationId = Auth::user()?->activeApplication?->id;
+        if (!$activeApplicationId) {
+            return null;
+        }
+
+        return Submission::where('user_id', Auth::id())
+            ->where('application_id', $activeApplicationId)
+            ->where('type', 'extension-quality-rating')
+            ->value('id');
+    }
+
+
     public function table(Table $table): Table
     {
         return $table
             ->query(
                 Submission::query()
                     ->where('user_id', Auth::id())
+                    ->where('category', 'KRA III')
                     ->where('type', 'extension-quality-rating')
-                    ->where('application_id', Auth::user()->activeApplication->id ?? null)
+                    ->where('application_id', Auth::user()?->activeApplication?->id ?? null)
             )
             ->heading('Client Satisfaction Rating Submission')
             ->columns([
-                Tables\Columns\TextColumn::make('data.first_sem_rating')->label('1st Sem Rating'),
-                Tables\Columns\TextColumn::make('data.second_sem_rating')->label('2nd Sem Rating'),
-                Tables\Columns\TextColumn::make('data.semesters_deducted')->label('Semesters Deducted'),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Last Updated')
+                    ->dateTime()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('Add Rating')
+                CreateAction::make()
+                    ->label('Add')
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()->activeApplication->id;
+                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                         $data['category'] = 'KRA III';
                         $data['type'] = 'extension-quality-rating';
                         return $data;
                     })
-                    ->modalHeading('Submit Client Satisfaction Rating')
-                    ->modalWidth('3xl')
-                    ->hidden(fn(): bool => $this->submissionExists()),
+                    ->modalHeading('Submit Client Satisfaction Ratings')
+                    ->modalWidth('4xl')
+                    ->hidden(fn(): bool => $this->submissionExistsForCurrentType()),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
+                    ->label('Edit Rating Data')
                     ->form($this->getFormSchema())
-                    ->modalHeading('Edit Client Satisfaction Rating')
-                    ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalHeading('Edit Client Satisfaction Ratings')
+                    ->modalWidth('4xl'),
             ]);
     }
 
+    private function getRatingFields(): array
+    {
+        $prefix = 'client';
+        $fields = [];
+        $currentYear = (int) date('Y');
+
+        for ($yearIndex = 0; $yearIndex < 4; $yearIndex++) {
+            $startYear = $currentYear - ($yearIndex + 1);
+            $endYear = $startYear + 1;
+            $ayLabel = "AY {$startYear}-{$endYear}";
+            $yearKeySuffix = 4 - $yearIndex;
+
+            $fields[] = Section::make($ayLabel)
+                ->schema([
+                    TextInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem1")
+                        ->label('1st Semester Rating')
+                        ->type('number')
+                        ->step('0.01')
+                        ->rules(['numeric', 'between:0,100'])
+                        ->extraInputAttributes([
+                            'onkeydown' => "return !['e','E','+','-'].includes(event.key);",
+                        ])
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->required(),
+                    TextInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem2")
+                        ->label('2nd Semester Rating')
+                        ->type('number')
+                        ->step('0.01')
+                        ->rules(['numeric', 'between:0,100'])
+                        ->extraInputAttributes([
+                            'onkeydown' => "return !['e','E','+','-'].includes(event.key);",
+                        ])
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->required(),
+                ])->columns(2);
+        }
+        return array_reverse($fields);
+    }
+
+
     protected function getFormSchema(): array
     {
+        $prefix = 'client';
+        $deductedSemestersKey = "data.{$prefix}_deducted_semesters";
+        $reasonKey = "data.{$prefix}_deduction_reason";
+
         return [
-            TextInput::make('data.first_sem_rating')
-                ->label('1st Semester Client Satisfaction Rating')
-                ->numeric()
-                ->required(),
-            FileUpload::make('data.first_sem_evidence')
-                ->label('Link to Evidence from Google Drive (1st Semester)')
+            Section::make('Client Satisfaction Ratings')
+                ->description('Enter the average client satisfaction rating received per semester for the last 4 academic years. Rating scale: 0-100.')
+                ->schema($this->getRatingFields())
+                ->columns(2),
+
+            Section::make('Leave / Deduction Information (If Applicable)')
+                ->schema([
+                    Select::make($reasonKey)
+                        ->label('Reason for Deducting Semesters (Leave)')
+                        ->options([
+                            'NOT APPLICABLE' => 'Not Applicable',
+                            'ON APPROVED STUDY LEAVE' => 'On Approved Study Leave',
+                            'ON APPROVED SABBATICAL LEAVE' => 'On Approved Sabbatical Leave',
+                            'ON APPROVED MATERNITY LEAVE' => 'On Approved Maternity Leave',
+                        ])
+                        ->default('NOT APPLICABLE')
+                        ->required()
+                        ->live(),
+
+                    TextInput::make($deductedSemestersKey)
+                        ->label('Number of Semesters to Deduct')
+                        ->integer()
+                        ->minValue(0)
+                        ->maxValue(7)
+                        ->default(0)
+                        ->required()
+                        ->visible(fn(Get $get): bool => $get($reasonKey) !== 'NOT APPLICABLE'),
+                ])->columns(2),
+
+            FileUpload::make('google_drive_file_id')
+                ->label('Proof Document(s) (Consolidated Evidence Link)')
                 ->multiple()
                 ->reorderable()
                 ->required()
                 ->disk('private')
-                ->directory('proof-documents/kra3-quality-sem1')
-                ->columnSpanFull(),
-
-            TextInput::make('data.second_sem_rating')
-                ->label('2nd Semester Client Satisfaction Rating')
-                ->numeric()
-                ->required(),
-            FileUpload::make('data.second_sem_evidence')
-                ->label('Link to Evidence from Google Drive (2nd Semester)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra3-quality-sem2')
-                ->columnSpanFull(),
-
-            TextInput::make('data.semesters_deducted')
-                ->label('Specify Number of Semesters Deducted from the Divisor')
-                ->numeric()
-                ->default(0)
-                ->required(),
-            Textarea::make('data.deduction_reason')
-                ->label('Reason for Deducting the Divisor')
-                ->default('Not Applicable')
-                ->required()
+                ->directory('proof-documents/kra3-quality-rating')
                 ->columnSpanFull(),
         ];
     }

@@ -10,9 +10,12 @@ class ScoringService
         $average = $this->calculateSpecialAverage(
             $this->getRatingFieldKeys('student'),
             $data,
-            (int)($data['student_deducted_semesters'] ?? 0)
+            (int)($data['student_deducted_semesters'] ?? 0),
+            $data['student_deduction_reason'] ?? 'NOT APPLICABLE'
         );
-        return $average * 0.36;
+        // Score is average * 0.36 (KRA I A has max 60 points, 60% student = 36)
+        $cappedAverage = min($average, 100.0); // Cap average at 100
+        return $cappedAverage * 0.36;
     }
 
     public function calculateTeachingEffectivenessSupervisorScore(array $data): float
@@ -20,9 +23,12 @@ class ScoringService
         $average = $this->calculateSpecialAverage(
             $this->getRatingFieldKeys('supervisor'),
             $data,
-            (int)($data['supervisor_deducted_semesters'] ?? 0)
+            (int)($data['supervisor_deducted_semesters'] ?? 0),
+            $data['supervisor_deduction_reason'] ?? 'NOT APPLICABLE'
         );
-        return $average * 0.24;
+        // Score is average * 0.24 (KRA I A has max 60 points, 40% supervisor = 24)
+        $cappedAverage = min($average, 100.0); // Cap average at 100
+        return $cappedAverage * 0.24;
     }
 
     // KRA I, Criterion B
@@ -94,11 +100,7 @@ class ScoringService
     public function calculateResearchSoleScore(array $data): float
     {
         $outputType = $data['output_type'] ?? null;
-
-        if (!$outputType) {
-            return 0.0;
-        }
-
+        if (!$outputType) return 0.0;
         return $this->getResearchBaseScore($outputType);
     }
 
@@ -106,13 +108,8 @@ class ScoringService
     {
         $outputType = $data['output_type'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-
-        if (!$outputType || $percentage <= 0) {
-            return 0.0;
-        }
-
+        if (!$outputType || $percentage <= 0) return 0.0;
         $baseScore = $this->getResearchBaseScore($outputType);
-
         return $baseScore * ($percentage / 100.0);
     }
 
@@ -121,7 +118,6 @@ class ScoringService
     {
         $dateCompleted = $data['date_completed'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
-
         return (!empty($dateCompleted) || !empty($dateUtilized)) ? 35.0 : 0.0;
     }
 
@@ -130,40 +126,27 @@ class ScoringService
         $dateCompleted = $data['date_completed'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-
-        if ((empty($dateCompleted) && empty($dateUtilized)) || $percentage <= 0) {
-            return 0.0;
-        }
-
-        return 35.0 * ($percentage / 100.0);
+        if ((empty($dateCompleted) && empty($dateUtilized)) || $percentage <= 0) return 0.0;
+        return 35.0 * ($percentage / 100.0); // Base score * percentage
     }
+
 
     // KRA II, Criterion A: (Citations)
     public function calculateResearchCitationLocalScore(array $data): float
     {
         $citationCount = (int)($data['citation_count'] ?? 0);
-
-        if ($citationCount <= 0) {
-            return 0.0;
-        }
-
+        if ($citationCount <= 0) return 0.0;
         $rawScore = $citationCount * 5.0;
         $maxScore = 40.0;
-
         return min($rawScore, $maxScore);
     }
 
     public function calculateResearchCitationInternationalScore(array $data): float
     {
         $citationCount = (int)($data['citation_count'] ?? 0);
-
-        if ($citationCount <= 0) {
-            return 0.0;
-        }
-
+        if ($citationCount <= 0) return 0.0;
         $rawScore = $citationCount * 10.0;
         $maxScore = 60.0;
-
         return min($rawScore, $maxScore);
     }
 
@@ -171,11 +154,7 @@ class ScoringService
     public function calculateInventionPatentSoleScore(array $data): float
     {
         $stage = $data['patent_stage'] ?? null;
-
-        if (!$stage) {
-            return 0.0;
-        }
-
+        if (!$stage) return 0.0;
         return $this->getInventionPatentBaseScore($stage);
     }
 
@@ -183,13 +162,8 @@ class ScoringService
     {
         $stage = $data['patent_stage'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-
-        if (!$stage || $percentage <= 0) {
-            return 0.0;
-        }
-
+        if (!$stage || $percentage <= 0) return 0.0;
         $baseScore = $this->getInventionPatentBaseScore($stage);
-
         return $baseScore * ($percentage / 100.0);
     }
 
@@ -198,11 +172,7 @@ class ScoringService
     {
         $type = $data['patent_type'] ?? null;
         $dateGranted = $data['date_granted'] ?? null;
-
-        if (!$type || empty($dateGranted)) {
-            return 0.0;
-        }
-
+        if (!$type || empty($dateGranted)) return 0.0;
         return match ($type) {
             'utility_model' => 10.0,
             'industrial_design' => 5.0,
@@ -215,17 +185,12 @@ class ScoringService
         $type = $data['patent_type'] ?? null;
         $dateGranted = $data['date_granted'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-
-        if (!$type || empty($dateGranted) || $percentage <= 0) {
-            return 0.0;
-        }
-
+        if (!$type || empty($dateGranted) || $percentage <= 0) return 0.0;
         $baseScore = match ($type) {
             'utility_model' => 10.0,
             'industrial_design' => 5.0,
             default => 0.0,
         };
-
         return $baseScore * ($percentage / 100.0);
     }
 
@@ -234,15 +199,9 @@ class ScoringService
     {
         $datePatented = $data['date_patented'] ?? null;
         $dateCommercialized = $data['date_commercialized'] ?? null;
-        $area = $data['area_commercialized'] ?? null;
-
-        if (empty($datePatented) || empty($dateCommercialized) || empty($area)) {
-            return 0.0;
-        }
-
+        if (empty($datePatented) || empty($dateCommercialized)) return 0.0;
         $rawScore = 5.0;
         $maxScore = 20.0;
-
         return min($rawScore, $maxScore);
     }
 
@@ -250,15 +209,9 @@ class ScoringService
     {
         $datePatented = $data['date_patented'] ?? null;
         $dateCommercialized = $data['date_commercialized'] ?? null;
-        $area = $data['area_commercialized'] ?? null;
-
-        if (empty($datePatented) || empty($dateCommercialized) || empty($area)) {
-            return 0.0;
-        }
-
+        if (empty($datePatented) || empty($dateCommercialized)) return 0.0;
         $rawScore = 10.0;
         $maxScore = 30.0;
-
         return min($rawScore, $maxScore);
     }
 
@@ -268,7 +221,6 @@ class ScoringService
         $copyrightNo = $data['copyright_no'] ?? null;
         $dateCopyrighted = $data['date_copyrighted'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
-
         return (!empty($copyrightNo) && (!empty($dateCopyrighted) || !empty($dateUtilized))) ? 10.0 : 0.0;
     }
 
@@ -278,12 +230,8 @@ class ScoringService
         $dateCopyrighted = $data['date_copyrighted'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-
-        if (empty($copyrightNo) || (empty($dateCopyrighted) && empty($dateUtilized)) || $percentage <= 0) {
-            return 0.0;
-        }
-
-        return 10.0 * ($percentage / 100.0);
+        if (empty($copyrightNo) || (empty($dateCopyrighted) && empty($dateUtilized)) || $percentage <= 0) return 0.0;
+        return 10.0 * ($percentage / 100.0); // Base score * percentage
     }
 
     // KRA II, Criterion B (Non-Patentable: Updated Software)
@@ -292,12 +240,9 @@ class ScoringService
         $copyrightNo = $data['copyright_no'] ?? null;
         $dateCopyrighted = $data['date_copyrighted'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
-        $updateDetails = $data['update_details'] ?? null;
         $role = $data['developer_role'] ?? null;
 
-        if (empty($copyrightNo) || empty($dateCopyrighted) || empty($dateUtilized) || empty($updateDetails) || empty($role)) {
-            return 0.0;
-        }
+        if ((empty($dateCopyrighted) && empty($dateUtilized)) || empty($role)) return 0.0;
 
         return match (strtolower($role)) {
             'sole developer' => 4.0,
@@ -306,28 +251,22 @@ class ScoringService
         };
     }
 
+
     // KRA II, Criterion B (Non-Patentable: Plant/Animal/Microbe)
     public function calculatePlantAnimalSoleScore(array $data): float
     {
-        $dateCompleted = $data['date_completed'] ?? null;
         $dateRegistered = $data['date_registered'] ?? null;
         $datePropagation = $data['date_propagation'] ?? null;
-
-        return (!empty($dateCompleted) && !empty($dateRegistered) && !empty($datePropagation)) ? 10.0 : 0.0;
+        return (!empty($dateRegistered) && !empty($datePropagation)) ? 10.0 : 0.0;
     }
 
     public function calculatePlantAnimalCoDeveloperScore(array $data): float
     {
-        $dateCompleted = $data['date_completed'] ?? null;
         $dateRegistered = $data['date_registered'] ?? null;
         $datePropagation = $data['date_propagation'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-
-        if (empty($dateCompleted) || empty($dateRegistered) || empty($datePropagation) || $percentage <= 0) {
-            return 0.0;
-        }
-
-        return 10.0 * ($percentage / 100.0);
+        if (empty($dateRegistered) || empty($datePropagation) || $percentage <= 0) return 0.0;
+        return 10.0 * ($percentage / 100.0); // Base score * percentage
     }
 
     // KRA II, Criterion C
@@ -338,7 +277,7 @@ class ScoringService
         $datePerformed = $data['date_performed'] ?? null;
         $classification = $data['classification'] ?? null;
 
-        if (empty($title) || empty($datePerformed) || empty($artType) || $artType === 'select_option') {
+        if (empty($title) || empty($datePerformed) || empty($artType) || $artType === 'select_option' || empty($classification) || $classification === 'select_option') {
             return 0.0;
         }
 
@@ -402,7 +341,7 @@ class ScoringService
         $datePublished = $data['date_published'] ?? null;
         $literaryType = $data['literary_type'] ?? null;
 
-        if (empty($publisher) || empty($datePublished)) {
+        if (empty($publisher) || empty($datePublished) || empty($literaryType) || $literaryType === 'select_option') {
             return 0.0;
         }
 
@@ -416,30 +355,282 @@ class ScoringService
         };
     }
 
-    // KRA I, Private Helpers
-    private function calculateSpecialAverage(array $ratingKeys, array $data, int $deductedSemesters): float
+    // KRA III, Criterion A
+    public function calculateExtensionLinkageScore(array $data): float
     {
-        $ratings = [];
-        foreach ($ratingKeys as $key) {
-            if (isset($data[$key]) && is_numeric($data[$key])) {
-                $ratings[] = (float)$data[$key];
-            }
-        }
+        $partnerName = $data['partner_name'] ?? null;
+        $moaStart = $data['moa_start'] ?? null;
+        $facultyRole = $data['faculty_role'] ?? null;
+        $moaExpiration = $data['moa_expiration'] ?? null;
+        $activities = $data['activities'] ?? null;
+        $activityDate = $data['activity_date'] ?? null;
+        $nature = $data['nature'] ?? null;
 
-        if (empty($ratings)) {
+        if (
+            empty($partnerName) || empty($moaStart) ||
+            empty($facultyRole) || $facultyRole === 'select_option' ||
+            empty($moaExpiration) || empty($activities) ||
+            empty($activityDate) || empty($nature)
+        ) {
             return 0.0;
         }
 
-        $totalSemesters = 8;
+        return match ($facultyRole) {
+            'lead_coordinator' => 5.0,
+            'assistant_coordinator' => 3.0,
+            default => 0.0,
+        };
+    }
 
-        $isOnLeave = isset($data['reason_for_deducting']) && $data['reason_for_deducting'] !== 'NOT APPLICABLE' && $data['reason_for_deducting'] !== 'SELECT OPTION';
+    public function calculateExtensionIncomeGenerationScore(array $data): float
+    {
+        $name = $data['name'] ?? null;
+        $coverageStart = $data['coverage_start'] ?? null;
+        $role = $data['role'] ?? null;
+        $amount = isset($data['amount']) && is_numeric($data['amount']) ? (float)$data['amount'] : null;
 
-        if ($isOnLeave && $deductedSemesters > 0 && $deductedSemesters < $totalSemesters) {
-            $divisor = $totalSemesters - $deductedSemesters;
-            return array_sum($ratings) / $divisor;
-        } else {
-            return array_sum($ratings) / count($ratings);
+        if (empty($name) || empty($coverageStart) || $amount === null || empty($role) || $role === 'select_option') {
+            return 0.0;
         }
+
+        if ($amount <= 0) return 0.0;
+
+        if ($role === 'lead_contributor') {
+            if ($amount <= 6000000) return 6.0;
+            if ($amount <= 12000000) return 12.0;
+            return 18.0;
+        } elseif ($role === 'co_contributor') {
+            if ($amount <= 6000000) return 3.0;
+            if ($amount <= 12000000) return 6.0;
+            return 9.0;
+        }
+
+        return 0.0;
+    }
+
+    // KRA III, Criterion B
+    public function calculateAccreditationServiceScore(array $data): float
+    {
+        $agencyName = $data['agency_name'] ?? null;
+        $servicesProvided = $data['services_provided'] ?? null;
+        $scope = $data['scope'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $deploymentCount = isset($data['deployment_count']) && is_numeric($data['deployment_count']) ? (int)$data['deployment_count'] : null;
+
+        if (
+            empty($agencyName) || empty($servicesProvided) || empty($scope) || $scope === 'select_option' ||
+            empty($periodStart) || empty($data['sponsoring_body']) ||
+            $deploymentCount === null || $deploymentCount <= 0
+        ) {
+            return 0.0;
+        }
+
+        return match ($scope) {
+            'local' => 8.0,
+            'international' => 10.0,
+            default => 0.0,
+        };
+    }
+
+    public function calculateJudgeExaminerScore(array $data): float
+    {
+        $eventTitle = $data['event_title'] ?? null;
+        $organizer = $data['organizer'] ?? null;
+        $eventDate = $data['event_date'] ?? null;
+        $awardNature = $data['award_nature'] ?? null;
+        $role = $data['role'] ?? null;
+
+        if (
+            empty($eventTitle) || empty($organizer) || empty($eventDate) ||
+            empty($awardNature) || $awardNature === 'select_option' || empty($role)
+        ) {
+            return 0.0;
+        }
+
+        return match ($awardNature) {
+            'research_award' => 2.0,
+            'academic_competition' => 1.0,
+            default => 0.0,
+        };
+    }
+
+    public function calculateConsultantScore(array $data): float
+    {
+        $projectTitle = $data['project_title'] ?? null;
+        $organizationName = $data['organization_name'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $periodEnd = $data['period_end'] ?? null;
+        $scope = $data['scope'] ?? null;
+        $venue = $data['venue'] ?? null;
+
+        if (
+            empty($projectTitle) || empty($organizationName) || empty($periodStart) ||
+            empty($periodEnd) || empty($scope) || $scope === 'select_option' || empty($venue)
+        ) {
+            return 0.0;
+        }
+
+        return match ($scope) {
+            'local' => 8.0,
+            'international' => 10.0,
+            default => 0.0,
+        };
+    }
+
+    public function calculateMediaServiceScore(array $data): float
+    {
+        $service = $data['service'] ?? null;
+        $mediaName = $data['media_name'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $engagementCount = isset($data['engagement_count']) && is_numeric($data['engagement_count']) ? (int)$data['engagement_count'] : null;
+
+        if (empty($service) || $service === 'select_option' || empty($periodStart)) {
+            return 0.0;
+        }
+
+        return match ($service) {
+            'writer_occasional_newspaper' => (!empty($engagementCount) && $engagementCount > 0) ? ($engagementCount * 2.0) : 0.0,
+            'writer_regular_newspaper'    => (!empty($mediaName)) ? 10.0 : 0.0,
+            'host_tv_radio_program'       => (!empty($mediaName)) ? 10.0 : 0.0,
+            'guest_technical_expert'      => (!empty($engagementCount) && $engagementCount > 0) ? ($engagementCount * 1.0) : 0.0,
+            default => 0.0,
+        };
+    }
+
+    public function calculateTrainingResourcePersonScore(array $data): float
+    {
+        $trainingTitle = $data['training_title'] ?? null;
+        $participationType = $data['participation_type'] ?? null;
+        $organizer = $data['organizer'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $periodEnd = $data['period_end'] ?? null;
+        $scope = $data['scope'] ?? null;
+        $totalHours = isset($data['total_hours']) && is_numeric($data['total_hours']) ? (int)$data['total_hours'] : null;
+
+        if (
+            empty($trainingTitle) || empty($participationType) || empty($organizer) ||
+            empty($periodStart) || empty($periodEnd) ||
+            empty($scope) || $scope === 'select_option' ||
+            $totalHours === null || $totalHours <= 0
+        ) {
+            return 0.0;
+        }
+
+        return match ($scope) {
+            'local' => 2.0 * $totalHours,
+            'international' => 3.0 * $totalHours,
+            default => 0.0,
+        };
+    }
+
+    public function calculateSocialResponsibilityScore(array $data): float
+    {
+        $activityTitle = $data['activity_title'] ?? null;
+        $communityName = $data['community_name'] ?? null;
+        $beneficiaryCount = isset($data['beneficiary_count']) && is_numeric($data['beneficiary_count']) ? (int)$data['beneficiary_count'] : null;
+        $role = $data['role'] ?? null;
+        $activityDate = $data['activity_date'] ?? null;
+
+        if (
+            empty($activityTitle) || empty($communityName) ||
+            $beneficiaryCount === null || $beneficiaryCount <= 0 ||
+            empty($role) || $role === 'select_option' ||
+            empty($activityDate)
+        ) {
+            return 0.0;
+        }
+
+        return match ($role) {
+            'head' => 5.0,
+            'participant' => 2.0,
+            default => 0.0,
+        };
+    }
+
+
+    // KRA III, Criterion C
+    public function calculateQualityOfExtensionScore(array $data): float
+    {
+        $average = $this->calculateSpecialAverage(
+            $this->getExtensionRatingFieldKeys(),
+            $data,
+            (int)($data['client_deducted_semesters'] ?? 0),
+            $data['client_deduction_reason'] ?? 'NOT APPLICABLE'
+        );
+
+        $cappedAverage = min($average, 100.0);
+        return $cappedAverage * 0.2;
+    }
+
+    // KRA III, Criterion D (Bonus)
+    public function calculateBonusDesignationScore(array $data): float
+    {
+        $designation = $data['designation'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $periodEnd = $data['period_end'] ?? null;
+
+        if (empty($designation) || $designation === 'select_option' || empty($periodStart) || empty($periodEnd)) {
+            return 0.0;
+        }
+
+        return match ($designation) {
+            'president_oic' => 20.0,
+            'vice_president' => 15.0,
+            'chancellor' => 10.0,
+            'vice_chancellor' => 8.0,
+            'campus_director' => 8.0,
+            'faculty_regent' => 8.0,
+            'office_director' => 6.0,
+            'university_college_secretary' => 6.0,
+            'dean' => 6.0,
+            'associate_dean' => 5.0,
+            'project_head_kra3d' => 4.0,
+            'department_head' => 4.0,
+            'institution_committee_chair' => 3.0,
+            'college_secretary' => 3.0,
+            'program_chair' => 3.0,
+            'institution_committee_member' => 2.0,
+            'department_committee_chair' => 2.0,
+            'department_committee_member' => 1.0,
+            default => 0.0,
+        };
+    }
+
+    // Private Helpers
+    private function calculateSpecialAverage(array $ratingKeys, array $data, int $deductedSemesters, string $reasonForDeducting = 'NOT APPLICABLE'): float
+    {
+        $ratings = [];
+        $providedRatingsCount = 0;
+
+        foreach ($ratingKeys as $key) {
+            if (isset($data[$key]) && is_numeric($data[$key])) {
+                $maxValue = 100.0;
+                $ratings[] = min((float)$data[$key], $maxValue);
+                $providedRatingsCount++;
+            } elseif (isset($data[$key])) {
+                $providedRatingsCount++;
+            }
+        }
+
+        if ($providedRatingsCount === 0) {
+            return 0.0;
+        }
+
+        $totalSemesters = count($ratingKeys);
+
+        $isValidDeduction = $reasonForDeducting !== 'NOT APPLICABLE' && $reasonForDeducting !== 'SELECT OPTION';
+
+        $divisor = $totalSemesters;
+        if ($isValidDeduction && $deductedSemesters > 0 && $deductedSemesters < $totalSemesters) {
+            $divisor = $totalSemesters - $deductedSemesters;
+        } elseif ($providedRatingsCount < $totalSemesters && !$isValidDeduction) {
+            $divisor = $providedRatingsCount;
+        }
+        $divisor = max(1, $divisor);
+
+        $sum = empty($ratings) ? 0.0 : array_sum($ratings);
+
+        return $sum / $divisor;
     }
 
     private function getRatingFieldKeys(string $prefix): array
@@ -453,6 +644,7 @@ class ScoringService
         return $keys;
     }
 
+    // Helper for KRA I C (Mentorship)
     private function getMentorshipAcademicYearKeys(): array
     {
         return ['ay_1_count', 'ay_2_count', 'ay_3_count', 'ay_4_count'];
@@ -467,6 +659,7 @@ class ScoringService
         return $total;
     }
 
+    // Helper for KRA I B (Instructional Materials)
     private function getInstructionalMaterialBaseScore(?string $materialType): float
     {
         if (!$materialType) return 0.0;
@@ -480,13 +673,10 @@ class ScoringService
         };
     }
 
-    // KRA II, Private Helpers
+    // Helper for KRA II A (Published Papers)
     private function getResearchBaseScore(?string $outputType): float
     {
-        if (!$outputType) {
-            return 0.0;
-        }
-
+        if (!$outputType) return 0.0;
         return match ($outputType) {
             'book' => 100.0,
             'journal_article' => 50.0,
@@ -497,17 +687,28 @@ class ScoringService
         };
     }
 
+    // Helper for KRA II B (Patented Inventions)
     private function getInventionPatentBaseScore(?string $stage): float
     {
-        if (!$stage) {
-            return 0.0;
-        }
-
+        if (!$stage) return 0.0;
         return match (strtolower($stage)) {
             'accepted' => 10.0,
             'published' => 20.0,
             'granted' => 80.0,
             default => 0.0,
         };
+    }
+
+    // Helper for KRA III C field keys
+    private function getExtensionRatingFieldKeys(): array
+    {
+        $prefix = 'client';
+        $keys = [];
+        for ($year = 1; $year <= 4; $year++) {
+            for ($sem = 1; $sem <= 2; $sem++) {
+                $keys[] = "{$prefix}_ay{$year}_sem{$sem}";
+            }
+        }
+        return $keys;
     }
 }

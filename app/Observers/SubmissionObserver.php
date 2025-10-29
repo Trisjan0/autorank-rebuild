@@ -117,6 +117,37 @@ class SubmissionObserver
             'creative-literary-publication' => $this->scoringService
                 ->calculateCreativeLiteraryPublicationScore($submission->data),
 
+            // KRA III, Criterion A
+            'extension-linkage' => $this->scoringService
+                ->calculateExtensionLinkageScore($submission->data),
+
+            'extension-income-generation' => $this->scoringService
+                ->calculateExtensionIncomeGenerationScore($submission->data),
+
+            // KRA III, Criterion B
+            'accreditation_services' => $this->scoringService
+                ->calculateAccreditationServiceScore($submission->data),
+
+            'judge_examiner' => $this->scoringService
+                ->calculateJudgeExaminerScore($submission->data),
+
+            'consultant' => $this->scoringService
+                ->calculateConsultantScore($submission->data),
+
+            'media_service' => $this->scoringService
+                ->calculateMediaServiceScore($submission->data),
+
+            'training_resource_person' => $this->scoringService
+                ->calculateTrainingResourcePersonScore($submission->data),
+
+            // KRA III, Criterion C
+            'extension-quality-rating' => $this->scoringService
+                ->calculateQualityOfExtensionScore($submission->data),
+
+            // KRA III, Criterion D
+            'extension-bonus-designation' => $this->scoringService
+                ->calculateBonusDesignationScore($submission->data),
+
             default => 0.0,
         };
 
