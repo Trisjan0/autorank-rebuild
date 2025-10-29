@@ -8,6 +8,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
 use Filament\Tables;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
@@ -26,6 +27,11 @@ class EducationalQualificationsWidget extends BaseWidget
 
     public ?string $activeTable = 'doctorate_degree';
 
+    public function updatedActiveTable(): void
+    {
+        $this->resetTable();
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -38,18 +44,27 @@ class EducationalQualificationsWidget extends BaseWidget
 
     protected function getTableQuery(): Builder
     {
-        $type = $this->activeTable === 'doctorate_degree' ? 'profdev-doctorate' : 'profdev-additional-degree';
+        $type = $this->getActiveSubmissionType();
 
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $type);
+            ->where('category', 'KRA IV')
+            ->where('type', $type)
+            ->where('application_id', Auth::user()?->activeApplication?->id ?? null);
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return $this->activeTable === 'doctorate_degree'
+            ? 'profdev-doctorate'
+            : 'profdev-additional-degree';
     }
 
     protected function getTableHeading(): string
     {
         return $this->activeTable === 'doctorate_degree'
             ? 'Doctorate Degree (First Time)'
-            : 'Additional Degrees';
+            : 'Additional Degrees / Diplomas / Certificates';
     }
 
     protected function getTableColumns(): array
@@ -59,15 +74,22 @@ class EducationalQualificationsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.name')->label('Name of Doctorate Degree')->wrap(),
                 Tables\Columns\TextColumn::make('data.institution')->label('Name of Institution'),
                 Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
-                Tables\Columns\IconColumn::make('data.is_qualified')->label('Qualified for Sub-rank Increase?')->boolean(),
+                Tables\Columns\IconColumn::make('data.is_qualified')
+                    ->label('Claimed for Sub-rank Increase?')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
             ];
         }
 
         return [
-            Tables\Columns\TextColumn::make('data.degree_type')->label('Degree')->badge(),
-            Tables\Columns\TextColumn::make('data.name')->label('Degree Name')->wrap(),
+            Tables\Columns\TextColumn::make('data.degree_type')
+                ->label('Type')
+                ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                ->badge(),
+            Tables\Columns\TextColumn::make('data.name')->label('Degree/Diploma/Cert Name')->wrap(),
             Tables\Columns\TextColumn::make('data.institution')->label('Name of HEI'),
             Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
+            Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
         ];
     }
 
@@ -79,12 +101,12 @@ class EducationalQualificationsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()->activeApplication->id;
+                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                     $data['category'] = 'KRA IV';
-                    $data['type'] = $this->activeTable === 'doctorate_degree' ? 'profdev-doctorate' : 'profdev-additional-degree';
+                    $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
-                ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Submit Doctorate Degree' : 'Submit Additional Degree')
+                ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Submit Doctorate Degree' : 'Submit Additional Qualification')
                 ->modalWidth('3xl'),
         ];
     }
@@ -94,7 +116,7 @@ class EducationalQualificationsWidget extends BaseWidget
         return [
             EditAction::make()
                 ->form($this->getFormSchema())
-                ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Edit Doctorate Degree' : 'Edit Additional Degree')
+                ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Edit Doctorate Degree' : 'Edit Additional Qualification')
                 ->modalWidth('3xl'),
             DeleteAction::make(),
         ];
@@ -109,42 +131,53 @@ class EducationalQualificationsWidget extends BaseWidget
                 TextInput::make('data.name')
                     ->label('Name of Doctorate Degree (complete name of the program)')
                     ->required()
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 TextInput::make('data.institution')
                     ->label('Name of Institution Where the Degree Was Earned')
                     ->required()
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 DatePicker::make('data.date_completed')
                     ->label('Date Completed')
-                    ->required(),
+                    ->required()
+                    ->maxDate(now()),
                 Toggle::make('data.is_qualified')
-                    ->label('Is the Faculty Qualified for the Automatic 1 Sub-rank Increase?')
-                    ->inline(false),
+                    ->label('Is this degree being used for automatic 1 sub-rank increase?')
+                    ->helperText('Check this ONLY if you are using this degree for automatic promotion instead of points in this evaluation.')
+                    ->inline(false)
+                    ->default(false),
             ];
         } else {
             $schema = [
                 Select::make('data.degree_type')
-                    ->label('Degree')
+                    ->label('Type')
                     ->options([
-                        'masters' => 'Master\'s Degree',
-                        'bachelors' => 'Bachelor\'s Degree',
+                        'additional_doctorate' => 'Additional Doctorate Degree',
+                        'additional_masters' => 'Additional Master\'s Degree',
+                        'post_doctorate_diploma' => 'Post-Doctorate Diploma/Certificate',
+                        'post_masters_diploma' => 'Post-Master\'s Diploma/Certificate',
                     ])
-                    ->required(),
+                    ->required()
+                    ->searchable(),
                 TextInput::make('data.name')
-                    ->label('Degree Name')
-                    ->required(),
+                    ->label('Name of Degree/Diploma/Certificate')
+                    ->required()
+                    ->maxLength(255),
                 TextInput::make('data.institution')
                     ->label('Name of HEI')
                     ->required()
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 DatePicker::make('data.date_completed')
                     ->label('Date Completed')
-                    ->required(),
+                    ->required()
+                    ->maxDate(now()),
             ];
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
+            ->label('Proof Document(s) (e.g., TOR, Diploma, Certificate)')
             ->multiple()
             ->reorderable()
             ->required()

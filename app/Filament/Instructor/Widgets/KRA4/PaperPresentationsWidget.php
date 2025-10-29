@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class PaperPresentationsWidget extends BaseWidget
 {
@@ -23,22 +24,28 @@ class PaperPresentationsWidget extends BaseWidget
             ->query(
                 Submission::query()
                     ->where('user_id', Auth::id())
+                    ->where('category', 'KRA IV')
                     ->where('type', 'profdev-paper-presentation')
+                    ->where('application_id', Auth::user()?->activeApplication?->id ?? null)
             )
             ->heading('Paper Presentation Submissions')
             ->columns([
                 Tables\Columns\TextColumn::make('data.title')->label('Title of Paper')->wrap(),
-                Tables\Columns\TextColumn::make('data.scope')->label('Scope')->badge(),
+                Tables\Columns\TextColumn::make('data.scope')
+                    ->label('Scope')
+                    ->formatStateUsing(fn(?string $state): string => Str::title($state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('data.conference_title')->label('Title of Conference'),
                 Tables\Columns\TextColumn::make('data.date_presented')->label('Date Presented')->date(),
+                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Add Presentation')
+                    ->label('Add')
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()->activeApplication->id;
+                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
                         $data['category'] = 'KRA IV';
                         $data['type'] = 'profdev-paper-presentation';
                         return $data;
@@ -61,6 +68,7 @@ class PaperPresentationsWidget extends BaseWidget
             Textarea::make('data.title')
                 ->label('Title of Paper')
                 ->required()
+                ->maxLength(65535)
                 ->columnSpanFull(),
             Select::make('data.scope')
                 ->label('Scope')
@@ -71,15 +79,18 @@ class PaperPresentationsWidget extends BaseWidget
                 ->required(),
             TextInput::make('data.conference_title')
                 ->label('Title of the Conference')
-                ->required(),
+                ->required()
+                ->maxLength(255),
             TextInput::make('data.organizer')
                 ->label('Conference Organizer')
-                ->required(),
+                ->required()
+                ->maxLength(255),
             DatePicker::make('data.date_presented')
                 ->label('Date Presented')
-                ->required(),
+                ->required()
+                ->maxDate(now()),
             FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
+                ->label('Proof Document(s) (e.g., Certificate of Presentation, Copy of Paper)')
                 ->multiple()
                 ->reorderable()
                 ->required()

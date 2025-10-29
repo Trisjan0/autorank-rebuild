@@ -596,6 +596,170 @@ class ScoringService
         };
     }
 
+    // KRA IV, Criterion A
+    public function calculateProfOrgScore(array $data): float
+    {
+        $orgName = $data['name'] ?? null;
+        $orgType = $data['type'] ?? null;
+        $activity = $data['activity'] ?? null;
+        $dateActivity = $data['date_activity'] ?? null;
+        $role = $data['role'] ?? null;
+
+        if (
+            empty($orgName) || empty($orgType) || empty($activity) ||
+            empty($dateActivity) || empty($role) || $role === 'select_option'
+        ) {
+            return 0.0;
+        }
+
+        return 5.0;
+    }
+
+    // KRA IV, Criterion B (Educational Qualifications)
+    public function calculateDoctorateDegreeScore(array $data): float
+    {
+        $degreeName = $data['name'] ?? null;
+        $institution = $data['institution'] ?? null;
+        $dateCompleted = $data['date_completed'] ?? null;
+        $isQualified = isset($data['is_qualified']) ? (bool)$data['is_qualified'] : null;
+
+        if (empty($degreeName) || empty($institution) || empty($dateCompleted) || $isQualified === null) {
+            return 0.0;
+        }
+
+        return !$isQualified ? 40.0 : 0.0;
+    }
+
+    public function calculateAdditionalDegreeScore(array $data): float
+    {
+        $degreeType = $data['degree_type'] ?? null;
+        $degreeName = $data['name'] ?? null;
+        $institution = $data['institution'] ?? null;
+        $dateCompleted = $data['date_completed'] ?? null;
+
+        if (empty($degreeName) || empty($institution) || empty($dateCompleted) || empty($degreeType) || $degreeType === 'select_option') {
+            return 0.0;
+        }
+
+        return match ($degreeType) {
+            'additional_doctorate' => 40.0,
+            'additional_masters' => 20.0,
+            'post_doctorate_diploma' => 10.0,
+            'post_masters_diploma' => 10.0,
+            default => 0.0,
+        };
+    }
+
+    // KRA IV, Criterion B (Conferences/Training)
+    public function calculateConferenceTrainingScore(array $data): float
+    {
+        $confName = $data['name'] ?? null;
+        $scope = $data['scope'] ?? null;
+
+        if (empty($confName) || empty($scope) || $scope === 'select_option') {
+            return 0.0;
+        }
+
+        return match ($scope) {
+            'local' => 1.0,
+            'international' => 2.0,
+            default => 0.0,
+        };
+    }
+
+    // KRA IV, Criterion B (Paper Presentations)
+    public function calculatePaperPresentationScore(array $data): float
+    {
+        $paperTitle = $data['title'] ?? null;
+        $scope = $data['scope'] ?? null;
+
+        if (empty($paperTitle) || empty($scope) || $scope === 'select_option') {
+            return 0.0;
+        }
+
+        return match ($scope) {
+            'local' => 3.0,
+            'international' => 5.0,
+            default => 0.0,
+        };
+    }
+
+    // KRA IV, Criterion C (Awards & Recognition)
+    public function calculateAwardRecognitionScore(array $data): float
+    {
+        $awardName = $data['name'] ?? null;
+        $awardingBody = $data['awarding_body'] ?? null;
+        $dateGiven = $data['date_given'] ?? null;
+        $venue = $data['venue'] ?? null;
+        $scope = $data['scope'] ?? null;
+
+        if (
+            empty($awardName) || empty($awardingBody) || empty($dateGiven) ||
+            empty($venue) || empty($scope) || $scope === 'select_option'
+        ) {
+            return 0.0;
+        }
+
+        return match ($scope) {
+            'institutional' => 2.0,
+            'local' => 3.0,
+            'regional' => 4.0,
+            default => 0.0,
+        };
+    }
+
+    // KRA IV, Criterion D (Bonus - Academic Service)
+    public function calculateAcademicServiceScore(array $data): float
+    {
+        $designation = $data['designation'] ?? null;
+        $heiName = $data['hei_name'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $periodEnd = $data['period_end'] ?? null;
+        $numYears = isset($data['no_of_years']) && is_numeric($data['no_of_years']) ? (float)$data['no_of_years'] : null;
+        if (
+            empty($designation) || $designation === 'select_option' || empty($heiName) ||
+            empty($periodStart) || empty($periodEnd) || $numYears === null || $numYears <= 0
+        ) {
+            return 0.0;
+        }
+
+        $multiplier = match ($designation) {
+            'president' => 5.0,
+            'vp_dean_director' => 4.0,
+            'dept_program_head' => 3.0,
+            'faculty_member' => 2.0,
+            default => 0.0,
+        };
+
+        return $multiplier * $numYears;
+    }
+
+    // KRA IV, Criterion D (Bonus - Industry Experience)
+    public function calculateIndustryExperienceScore(array $data): float
+    {
+        $orgName = $data['org_name'] ?? null;
+        $designation = $data['designation'] ?? null;
+        $periodStart = $data['period_start'] ?? null;
+        $periodEnd = $data['period_end'] ?? null;
+        $numYears = isset($data['no_of_years']) && is_numeric($data['no_of_years']) ? (float)$data['no_of_years'] : null;
+
+        if (
+            empty($orgName) || empty($designation) || $designation === 'select_option' ||
+            empty($periodStart) || empty($periodEnd) || $numYears === null || $numYears <= 0
+        ) {
+            return 0.0;
+        }
+
+        $multiplier = match ($designation) {
+            'managerial_supervisory' => 4.0,
+            'technical_skilled' => 3.0,
+            'support_administrative' => 2.0,
+            default => 0.0,
+        };
+
+        return $multiplier * $numYears;
+    }
+
     // Private Helpers
     private function calculateSpecialAverage(array $ratingKeys, array $data, int $deductedSemesters, string $reasonForDeducting = 'NOT APPLICABLE'): float
     {

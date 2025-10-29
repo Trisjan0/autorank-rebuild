@@ -148,6 +148,33 @@ class SubmissionObserver
             'extension-bonus-designation' => $this->scoringService
                 ->calculateBonusDesignationScore($submission->data),
 
+            // KRA IV, Criterion A
+            'profdev-organization' => $this->scoringService
+                ->calculateProfOrgScore($submission->data),
+
+            // KRA IV, Criterion B
+            'profdev-doctorate' => $this->scoringService
+                ->calculateDoctorateDegreeScore($submission->data),
+
+            'profdev-additional-degree' => $this->scoringService
+                ->calculateAdditionalDegreeScore($submission->data),
+
+            'profdev-conference-training' => $this->scoringService
+                ->calculateConferenceTrainingScore($submission->data),
+
+            'profdev-paper-presentation' => $this->scoringService
+                ->calculatePaperPresentationScore($submission->data),
+
+            // KRA IV, Criterion C
+            'profdev-award-recognition' => $this->scoringService
+                ->calculateAwardRecognitionScore($submission->data),
+
+            // KRA IV, Criterion D
+            'profdev-academic-service' => $this->scoringService
+                ->calculateAcademicServiceScore($submission->data),
+            'profdev-industry-experience' => $this->scoringService
+                ->calculateIndustryExperienceScore($submission->data),
+
             default => 0.0,
         };
 

@@ -10,9 +10,6 @@ use Spatie\Permission\Models\Permission;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         // Create Roles
@@ -21,32 +18,41 @@ class UserSeeder extends Seeder
         $evaluatorRole = Role::firstOrCreate(['name' => 'Evaluator', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'Instructor', 'guard_name' => 'web']);
 
-        // Create Super Admin User
+        $superAdminEmail = env('DEFAULT_SUPER_ADMIN_EMAIL', 'superadmin@autorank.com');
+        $superAdminPassword = env('DEFAULT_SUPER_ADMIN_PASSWORD', 'password');
+
+        $adminEmail = env('DEFAULT_ADMIN_EMAIL', 'admin@autorank.com');
+        $adminPassword = env('DEFAULT_ADMIN_PASSWORD', 'password');
+
+        $evaluatorEmail = env('DEFAULT_EVALUATOR_EMAIL', 'evaluator@autorank.com');
+        $evaluatorPassword = env('DEFAULT_EVALUATOR_PASSWORD', 'password');
+
+        // Create Super Admin 
         $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@autorank.com'],
+            ['email' => $superAdminEmail],
             [
                 'name' => 'Super Admin',
-                'password' => Hash::make('sredlohecalpa'),
+                'password' => Hash::make($superAdminPassword),
             ]
         );
         $superAdmin->assignRole($superAdminRole);
 
-        // Create Admin User
+        // Create Admin
         $admin = User::firstOrCreate(
-            ['email' => 'admin@autorank.com'],
+            ['email' => $adminEmail],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('aredlohecalp'),
+                'password' => Hash::make($adminPassword),
             ]
         );
         $admin->assignRole($adminRole);
 
-        // Create Evaluator User
+        // Create Evaluator
         $evaluator = User::firstOrCreate(
-            ['email' => 'evaluator@autorank.com'],
+            ['email' => $evaluatorEmail],
             [
                 'name' => 'Evaluator',
-                'password' => Hash::make('eredlohecalp'),
+                'password' => Hash::make($evaluatorPassword),
             ]
         );
         $evaluator->assignRole($evaluatorRole);
