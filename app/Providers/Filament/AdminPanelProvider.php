@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Pages\ScoreCapSettings;
+use App\Filament\Admin\Pages\ThemeSettings;
 use App\Filament\Traits\AppliesCommonPanelBranding;
 use App\Filament\Traits\ManagesPanelColors;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
@@ -36,9 +38,10 @@ class AdminPanelProvider extends PanelProvider
             ->colors($this->getPanelColors())
             ->font('Archivo')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+                ScoreCapSettings::class,
+                ThemeSettings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

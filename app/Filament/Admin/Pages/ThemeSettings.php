@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Pages;
+namespace App\Filament\Admin\Pages;
 
 use App\Filament\Traits\ManagesPanelColors;
 use App\Models\User;
@@ -15,12 +15,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Valuestore\Valuestore;
 
-class Settings extends Page implements HasForms
+class ThemeSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
-    protected static string $view = 'filament.pages.settings';
+    protected static ?string $navigationIcon = 'heroicon-o-paint-brush';
+    protected static ?string $navigationGroup = 'Settings';
+    protected static ?string $navigationLabel = 'Theme Settings';
+    protected static ?string $title = 'Theme Settings';
+
+    protected static string $view = 'filament.admin.pages.theme-settings';
 
     public ?array $data = [];
 

@@ -2,8 +2,22 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
+
 class ScoringService
 {
+    private array $caps = [];
+
+    public function __construct()
+    {
+        $this->caps = Setting::all()->pluck('value', 'key')->all();
+    }
+
+    private function getCap(string $key): float
+    {
+        return (float)($this->caps[$key] ?? 0);
+    }
+
     // KRA I, Criterion A
     public function calculateTeachingEffectivenessStudentScore(array $data): float
     {
@@ -13,9 +27,9 @@ class ScoringService
             (int)($data['student_deducted_semesters'] ?? 0),
             $data['student_deduction_reason'] ?? 'NOT APPLICABLE'
         );
-        // Score is average * 0.36 (KRA I A has max 60 points, 60% student = 36)
+        // Score is average * (KRA I A Cap * 60%)
         $cappedAverage = min($average, 100.0); // Cap average at 100
-        return $cappedAverage * 0.36;
+        return $cappedAverage * ($this->getCap('kra_1_a_cap') * 0.60) / 100.0;
     }
 
     public function calculateTeachingEffectivenessSupervisorScore(array $data): float
@@ -26,9 +40,9 @@ class ScoringService
             (int)($data['supervisor_deducted_semesters'] ?? 0),
             $data['supervisor_deduction_reason'] ?? 'NOT APPLICABLE'
         );
-        // Score is average * 0.24 (KRA I A has max 60 points, 40% supervisor = 24)
+        // Score is average * (KRA I A Cap * 40%)
         $cappedAverage = min($average, 100.0); // Cap average at 100
-        return $cappedAverage * 0.24;
+        return $cappedAverage * ($this->getCap('kra_1_a_cap') * 0.40) / 100.0;
     }
 
     // KRA I, Criterion B
@@ -137,7 +151,7 @@ class ScoringService
         $citationCount = (int)($data['citation_count'] ?? 0);
         if ($citationCount <= 0) return 0.0;
         $rawScore = $citationCount * 5.0;
-        $maxScore = 40.0;
+        $maxScore = $this->getCap('kra_2_a_3_1_cap');
         return min($rawScore, $maxScore);
     }
 
@@ -146,7 +160,7 @@ class ScoringService
         $citationCount = (int)($data['citation_count'] ?? 0);
         if ($citationCount <= 0) return 0.0;
         $rawScore = $citationCount * 10.0;
-        $maxScore = 60.0;
+        $maxScore = $this->getCap('kra_2_a_3_2_cap');
         return min($rawScore, $maxScore);
     }
 
@@ -201,7 +215,7 @@ class ScoringService
         $dateCommercialized = $data['date_commercialized'] ?? null;
         if (empty($datePatented) || empty($dateCommercialized)) return 0.0;
         $rawScore = 5.0;
-        $maxScore = 20.0;
+        $maxScore = $this->getCap('kra_2_b_1_2_1_cap');
         return min($rawScore, $maxScore);
     }
 
@@ -211,7 +225,7 @@ class ScoringService
         $dateCommercialized = $data['date_commercialized'] ?? null;
         if (empty($datePatented) || empty($dateCommercialized)) return 0.0;
         $rawScore = 10.0;
-        $maxScore = 30.0;
+        $maxScore = $this->getCap('kra_2_b_1_2_2_cap');
         return min($rawScore, $maxScore);
     }
 
@@ -491,7 +505,7 @@ class ScoringService
         return match ($service) {
             'writer_occasional_newspaper' => (!empty($engagementCount) && $engagementCount > 0) ? ($engagementCount * 2.0) : 0.0,
             'writer_regular_newspaper'    => (!empty($mediaName)) ? 10.0 : 0.0,
-            'host_tv_radio_program'       => (!empty($mediaName)) ? 10.0 : 0.0,
+            'host_tv_radio_program'     => (!empty($mediaName)) ? 10.0 : 0.0,
             'guest_technical_expert'      => (!empty($engagementCount) && $engagementCount > 0) ? ($engagementCount * 1.0) : 0.0,
             default => 0.0,
         };
@@ -559,7 +573,7 @@ class ScoringService
         );
 
         $cappedAverage = min($average, 100.0);
-        return $cappedAverage * 0.2;
+        return $cappedAverage * $this->getCap('kra_3_c_cap') / 100.0;
     }
 
     // KRA III, Criterion D (Bonus)
