@@ -17,6 +17,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class PatentedInventionsWidget extends BaseWidget
 {
@@ -101,7 +103,7 @@ class PatentedInventionsWidget extends BaseWidget
             $columns[] = Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%');
         }
 
-        $columns[] = Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2);
+        $columns[] = ScoreColumn::make('score');
 
         return $columns;
     }
@@ -144,18 +146,46 @@ class PatentedInventionsWidget extends BaseWidget
             case 'invention_patent_co':
                 $schema = [
                     Textarea::make('data.name')->label('Name of the Invention')->maxLength(255)->required()->columnSpanFull(),
-                    DatePicker::make('data.application_date')->label('Application Date')->maxDate(now())->required(),
-                    Select::make('data.patent_stage')->label('Patent Application Stage')->options(['accepted' => 'Accepted', 'published' => 'Published', 'granted' => 'Granted'])->required(),
-                    DatePicker::make('data.date_granted')->label('Date Accepted / Published / Granted')->maxDate(now())->required(),
+                    DatePicker::make('data.application_date')
+                        ->label('Application Date')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
+                        ->maxDate(now())
+                        ->required(),
+                    Select::make('data.patent_stage')
+                        ->label('Patent Application Stage')
+                        ->options(['accepted' => 'Accepted', 'published' => 'Published', 'granted' => 'Granted'])
+                        ->searchable()
+                        ->required(),
+                    DatePicker::make('data.date_granted')
+                        ->label('Date Accepted / Published / Granted')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
+                        ->maxDate(now())
+                        ->required(),
                 ];
                 break;
             case 'utility_design_sole':
             case 'utility_design_co':
                 $schema = [
                     Textarea::make('data.name')->label('Name of Invention/Design')->maxLength(255)->required()->columnSpanFull(),
-                    Select::make('data.patent_type')->label('Type of Patent')->options(['utility_model' => 'Utility Model', 'industrial_design' => 'Industrial Design'])->required(),
-                    DatePicker::make('data.application_date')->label('Date of Application')->maxDate(now())->required(),
-                    DatePicker::make('data.date_granted')->label('Date Granted')->maxDate(now())->required(),
+                    Select::make('data.patent_type')
+                        ->label('Type of Patent')
+                        ->options(['utility_model' => 'Utility Model', 'industrial_design' => 'Industrial Design'])
+                        ->searchable()
+                        ->required(),
+                    DatePicker::make('data.application_date')
+                        ->label('Date of Application')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
+                        ->maxDate(now())
+                        ->required(),
+                    DatePicker::make('data.date_granted')
+                        ->label('Date Granted')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
+                        ->maxDate(now())
+                        ->required(),
                 ];
                 break;
             case 'commercialized_local':
@@ -163,19 +193,33 @@ class PatentedInventionsWidget extends BaseWidget
                 $schema = [
                     Textarea::make('data.name')->label('Name of Patented Product')->maxLength(255)->required()->columnSpanFull(),
                     TextInput::make('data.patent_type')->label('Type of Product')->maxLength(100)->required(),
-                    DatePicker::make('data.date_patented')->label('Date Patented')->maxDate(now())->required(),
-                    DatePicker::make('data.date_commercialized')->label('Date Product was First Commercialized')->maxDate(now())->required(),
+                    DatePicker::make('data.date_patented')
+                        ->label('Date Patented')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
+                        ->maxDate(now())
+                        ->required(),
+                    DatePicker::make('data.date_commercialized')
+                        ->label('Date Product was First Commercialized')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
+                        ->maxDate(now())
+                        ->required(),
                     TextInput::make('data.area_commercialized')->label('Area/Place Commercialized')->maxLength(150)->required(),
                 ];
                 break;
         }
 
         if (in_array($this->activeTable, ['invention_patent_co', 'utility_design_co'])) {
-            $schema[] = TextInput::make('data.contribution_percentage')->label('% Contribution')->integer()->minValue(1)->maxValue(100)->required();
+            $schema[] = TrimmedIntegerInput::make('data.contribution_percentage')
+                ->label('% Contribution')
+                ->minValue(1)
+                ->maxValue(100)
+                ->required();
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
+            ->label('Proof Document(s)')
             ->multiple()->reorderable()->required()->disk('private')
             ->directory(fn(): string => 'proof-documents/kra2-patents/' . $this->activeTable)
             ->columnSpanFull();

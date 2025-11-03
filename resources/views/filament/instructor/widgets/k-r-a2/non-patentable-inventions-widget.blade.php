@@ -9,8 +9,8 @@
                 </x-filament::tabs.item>
 
                 <x-filament::tabs.item
-                    wire:click="$set('activeTable', 'software_new_multiple')"
-                    :active="$activeTable === 'software_new_multiple'">
+                    wire:click="$set('activeTable', 'software_new_co')"
+                    :active="$activeTable === 'software_new_co'">
                     New Software (Multiple)
                 </x-filament::tabs.item>
                 
@@ -27,8 +27,8 @@
                 </x-filament::tabs.item>
                 
                 <x-filament::tabs.item
-                    wire:click="$set('activeTable', 'plant_animal_multiple')"
-                    :active="$activeTable === 'plant_animal_multiple'">
+                    wire:click="$set('activeTable', 'plant_animal_co')"
+                    :active="$activeTable === 'plant_animal_co'">
                     Plant/Animal/Microbe (Multiple)
                 </x-filament::tabs.item>
             </x-filament::tabs>

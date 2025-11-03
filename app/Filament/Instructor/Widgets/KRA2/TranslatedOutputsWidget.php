@@ -16,6 +16,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class TranslatedOutputsWidget extends BaseWidget
 {
@@ -68,7 +70,7 @@ class TranslatedOutputsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.project_name')->label('Project/Policy/Product Name')->wrap(),
                 Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
                 Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             'contributor' => [
                 Tables\Columns\TextColumn::make('data.title')->label('Title of Research')->wrap(),
@@ -78,7 +80,7 @@ class TranslatedOutputsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.contribution_percentage')
                     ->label('% Contribution')
                     ->suffix('%'),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             default => [],
         };
@@ -124,6 +126,8 @@ class TranslatedOutputsWidget extends BaseWidget
                 ->columnSpanFull(),
             DatePicker::make('data.date_completed')
                 ->label('Date Completed')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
             TextInput::make('data.funding_source')
@@ -137,21 +141,22 @@ class TranslatedOutputsWidget extends BaseWidget
                 ->columnSpanFull(),
             DatePicker::make('data.date_utilized')
                 ->label('Date Utilized / Implemented / Adopted / Developed')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
         ];
 
         if ($this->activeTable === 'contributor') {
-            $schema[] = TextInput::make('data.contribution_percentage')
+            $schema[] = TrimmedIntegerInput::make('data.contribution_percentage')
                 ->label('% Contribution')
-                ->integer()
                 ->minValue(1)
                 ->maxValue(100)
                 ->required();
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
+            ->label('Proof Document(s)')
             ->multiple()
             ->reorderable()
             ->required()

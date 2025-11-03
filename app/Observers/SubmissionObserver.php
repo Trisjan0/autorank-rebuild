@@ -16,168 +16,172 @@ class SubmissionObserver
 
     public function saving(Submission $submission): void
     {
-        $calculatedScore = match ($submission->type) {
+        $calculatedScores = match ($submission->type) {
 
             // KRA I, Criterion A
             'te-student-evaluation' => $this->scoringService
-                ->calculateTeachingEffectivenessStudentScore($submission->data),
+                ->calculateTeachingEffectivenessStudentScore($submission->data, $submission->type),
 
             'te-supervisor-evaluation' => $this->scoringService
-                ->calculateTeachingEffectivenessSupervisorScore($submission->data),
+                ->calculateTeachingEffectivenessSupervisorScore($submission->data, $submission->type),
 
             // KRA I, Criterion B
             'im-sole-authorship' => $this->scoringService
-                ->calculateInstructionalMaterialSoleScore($submission->data),
+                ->calculateInstructionalMaterialSoleScore($submission->data, $submission->type),
 
             'im-co-authorship' => $this->scoringService
-                ->calculateInstructionalMaterialCoAuthorScore($submission->data),
+                ->calculateInstructionalMaterialCoAuthorScore($submission->data, $submission->type),
 
             'im-academic-program' => $this->scoringService
-                ->calculateAcademicProgramScore($submission->data),
+                ->calculateAcademicProgramScore($submission->data, $submission->type),
 
             // KRA I, Criterion C
             'mentorship-adviser' => $this->scoringService
-                ->calculateMentorshipAdviserScore($submission->data),
+                ->calculateMentorshipAdviserScore($submission->data, $submission->type),
 
             'mentorship-panel' => $this->scoringService
-                ->calculateMentorshipPanelScore($submission->data),
+                ->calculateMentorshipPanelScore($submission->data, $submission->type),
 
             'mentorship-mentor' => $this->scoringService
-                ->calculateMentorshipMentorScore($submission->data),
+                ->calculateMentorshipMentorScore($submission->data, $submission->type),
 
             // KRA II, Criterion A (Published Outputs)
             'research-sole-authorship' => $this->scoringService
-                ->calculateResearchSoleScore($submission->data),
+                ->calculateResearchSoleScore($submission->data, $submission->type),
 
             'research-co-authorship' => $this->scoringService
-                ->calculateResearchCoAuthorScore($submission->data),
+                ->calculateResearchCoAuthorScore($submission->data, $submission->type),
 
             // KRA II, Criterion A (Translated Outputs)
             'research-translated-lead' => $this->scoringService
-                ->calculateTranslatedOutputLeadScore($submission->data),
+                ->calculateTranslatedOutputLeadScore($submission->data, $submission->type),
 
             'research-translated-contributor' => $this->scoringService
-                ->calculateTranslatedOutputContributorScore($submission->data),
+                ->calculateTranslatedOutputContributorScore($submission->data, $submission->type),
 
             // KRA II, Criterion A (Citations)
             'research-citation-local' => $this->scoringService
-                ->calculateResearchCitationLocalScore($submission->data),
+                ->calculateResearchCitationLocalScore($submission->data, $submission->type),
 
             'research-citation-international' => $this->scoringService
-                ->calculateResearchCitationInternationalScore($submission->data),
+                ->calculateResearchCitationInternationalScore($submission->data, $submission->type),
 
             // KRA II, Criterion B (Patented Inventions)
             'invention-patent-sole' => $this->scoringService
-                ->calculateInventionPatentSoleScore($submission->data),
+                ->calculateInventionPatentSoleScore($submission->data, $submission->type),
 
             'invention-patent-co-inventor' => $this->scoringService
-                ->calculateInventionPatentCoInventorScore($submission->data),
+                ->calculateInventionPatentCoInventorScore($submission->data, $submission->type),
 
             // KRA II, Criterion B (Utility/Design)
             'invention-utility-design-sole' => $this->scoringService
-                ->calculateUtilityDesignSoleScore($submission->data),
+                ->calculateUtilityDesignSoleScore($submission->data, $submission->type),
 
             'invention-utility-design-co-inventor' => $this->scoringService
-                ->calculateUtilityDesignCoInventorScore($submission->data),
+                ->calculateUtilityDesignCoInventorScore($submission->data, $submission->type),
 
             // KRA II, Criterion B (Commercialized)
             'invention-commercialized-local' => $this->scoringService
-                ->calculateCommercializedLocalScore($submission->data),
+                ->calculateCommercializedLocalScore($submission->data, $submission->type),
 
             'invention-commercialized-international' => $this->scoringService
-                ->calculateCommercializedInternationalScore($submission->data),
+                ->calculateCommercializedInternationalScore($submission->data, $submission->type),
 
             // KRA II, Criterion B (Non-Patentable: Software)
             'invention-software-new-sole' => $this->scoringService
-                ->calculateSoftwareNewSoleScore($submission->data),
+                ->calculateSoftwareNewSoleScore($submission->data, $submission->type),
 
             'invention-software-new-co' => $this->scoringService
-                ->calculateSoftwareNewCoDeveloperScore($submission->data),
+                ->calculateSoftwareNewCoDeveloperScore($submission->data, $submission->type),
 
             'invention-software-updated' => $this->scoringService
-                ->calculateSoftwareUpdatedScore($submission->data),
+                ->calculateSoftwareUpdatedScore($submission->data, $submission->type),
 
             // KRA II, Criterion B (Non-Patentable: Plant/Animal/Microbe)
             'invention-plant-animal-sole' => $this->scoringService
-                ->calculatePlantAnimalSoleScore($submission->data),
+                ->calculatePlantAnimalSoleScore($submission->data, $submission->type),
 
             'invention-plant-animal-co' => $this->scoringService
-                ->calculatePlantAnimalCoDeveloperScore($submission->data),
+                ->calculatePlantAnimalCoDeveloperScore($submission->data, $submission->type),
 
             // KRA II, Criterion C
             'creative-performing-art' => $this->scoringService
-                ->calculateCreativePerformingArtScore($submission->data),
+                ->calculateCreativePerformingArtScore($submission->data, $submission->type),
 
             'creative-exhibition' => $this->scoringService
-                ->calculateCreativeExhibitionScore($submission->data),
+                ->calculateCreativeExhibitionScore($submission->data, $submission->type),
 
             'creative-juried-design' => $this->scoringService
-                ->calculateCreativeJuriedDesignScore($submission->data),
+                ->calculateCreativeJuriedDesignScore($submission->data, $submission->type),
 
             'creative-literary-publication' => $this->scoringService
-                ->calculateCreativeLiteraryPublicationScore($submission->data),
+                ->calculateCreativeLiteraryPublicationScore($submission->data, $submission->type),
 
             // KRA III, Criterion A
             'extension-linkage' => $this->scoringService
-                ->calculateExtensionLinkageScore($submission->data),
+                ->calculateExtensionLinkageScore($submission->data, $submission->type),
 
             'extension-income-generation' => $this->scoringService
-                ->calculateExtensionIncomeGenerationScore($submission->data),
+                ->calculateExtensionIncomeGenerationScore($submission->data, $submission->type),
 
             // KRA III, Criterion B
             'accreditation_services' => $this->scoringService
-                ->calculateAccreditationServiceScore($submission->data),
+                ->calculateAccreditationServiceScore($submission->data, $submission->type),
 
             'judge_examiner' => $this->scoringService
-                ->calculateJudgeExaminerScore($submission->data),
+                ->calculateJudgeExaminerScore($submission->data, $submission->type),
 
             'consultant' => $this->scoringService
-                ->calculateConsultantScore($submission->data),
+                ->calculateConsultantScore($submission->data, $submission->type),
 
             'media_service' => $this->scoringService
-                ->calculateMediaServiceScore($submission->data),
+                ->calculateMediaServiceScore($submission->data, $submission->type),
 
             'training_resource_person' => $this->scoringService
-                ->calculateTrainingResourcePersonScore($submission->data),
+                ->calculateTrainingResourcePersonScore($submission->data, $submission->type),
+
+            'social_responsibility' => $this->scoringService
+                ->calculateSocialResponsibilityScore($submission->data, $submission->type),
 
             // KRA III, Criterion C
             'extension-quality-rating' => $this->scoringService
-                ->calculateQualityOfExtensionScore($submission->data),
+                ->calculateQualityOfExtensionScore($submission->data, $submission->type),
 
             // KRA III, Criterion D
             'extension-bonus-designation' => $this->scoringService
-                ->calculateBonusDesignationScore($submission->data),
+                ->calculateBonusDesignationScore($submission->data, $submission->type),
 
             // KRA IV, Criterion A
             'profdev-organization' => $this->scoringService
-                ->calculateProfOrgScore($submission->data),
+                ->calculateProfOrgScore($submission->data, $submission->type),
 
             // KRA IV, Criterion B
             'profdev-doctorate' => $this->scoringService
-                ->calculateDoctorateDegreeScore($submission->data),
+                ->calculateDoctorateDegreeScore($submission->data, $submission->type),
 
             'profdev-additional-degree' => $this->scoringService
-                ->calculateAdditionalDegreeScore($submission->data),
+                ->calculateAdditionalDegreeScore($submission->data, $submission->type),
 
             'profdev-conference-training' => $this->scoringService
-                ->calculateConferenceTrainingScore($submission->data),
+                ->calculateConferenceTrainingScore($submission->data, $submission->type),
 
             'profdev-paper-presentation' => $this->scoringService
-                ->calculatePaperPresentationScore($submission->data),
+                ->calculatePaperPresentationScore($submission->data, $submission->type),
 
             // KRA IV, Criterion C
             'profdev-award-recognition' => $this->scoringService
-                ->calculateAwardRecognitionScore($submission->data),
+                ->calculateAwardRecognitionScore($submission->data, $submission->type),
 
             // KRA IV, Criterion D
             'profdev-academic-service' => $this->scoringService
-                ->calculateAcademicServiceScore($submission->data),
+                ->calculateAcademicServiceScore($submission->data, $submission->type),
             'profdev-industry-experience' => $this->scoringService
-                ->calculateIndustryExperienceScore($submission->data),
+                ->calculateIndustryExperienceScore($submission->data, $submission->type),
 
-            default => 0.0,
+            default => ['raw' => 0.0, 'score' => 0.0],
         };
 
-        $submission->score = $calculatedScore;
+        $submission->raw_score = $calculatedScores['raw'];
+        $submission->score = $calculatedScores['score'];
     }
 }

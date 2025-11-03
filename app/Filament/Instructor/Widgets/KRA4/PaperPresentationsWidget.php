@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class PaperPresentationsWidget extends BaseWidget
 {
@@ -37,7 +38,7 @@ class PaperPresentationsWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.conference_title')->label('Title of Conference'),
                 Tables\Columns\TextColumn::make('data.date_presented')->label('Date Presented')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -76,6 +77,7 @@ class PaperPresentationsWidget extends BaseWidget
                     'local' => 'Local',
                     'international' => 'International',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.conference_title')
                 ->label('Title of the Conference')
@@ -87,6 +89,8 @@ class PaperPresentationsWidget extends BaseWidget
                 ->maxLength(255),
             DatePicker::make('data.date_presented')
                 ->label('Date Presented')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
             FileUpload::make('google_drive_file_id')

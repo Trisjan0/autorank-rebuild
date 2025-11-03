@@ -16,6 +16,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class MentorshipServicesWidget extends BaseWidget
 {
@@ -90,13 +92,13 @@ class MentorshipServicesWidget extends BaseWidget
 
                 ...$this->getTableAcademicYearColumns(),
 
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             'mentor' => [
                 Tables\Columns\TextColumn::make('data.competition_name')->label('Name of Competition')->wrap(),
                 Tables\Columns\TextColumn::make('data.award_received')->label('Award Received'),
                 Tables\Columns\TextColumn::make('data.date_awarded')->label('Date Awarded')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             default => [],
         };
@@ -153,9 +155,8 @@ class MentorshipServicesWidget extends BaseWidget
             $label = "{$labelPrefix} (AY {$startYear}–{$endYear})";
             $key = 'ay_' . (4 - $i) . '_count';
 
-            $fields[] = TextInput::make('data.' . $key)
+            $fields[] = TrimmedIntegerInput::make('data.' . $key)
                 ->label($label)
-                ->integer()
                 ->required()
                 ->default(0)
                 ->minValue(0);
@@ -176,6 +177,7 @@ class MentorshipServicesWidget extends BaseWidget
                         'masters_thesis' => 'Masters Thesis',
                         'dissertation' => 'Dissertation',
                     ])
+                    ->searchable()
                     ->required(),
 
                 ...$this->getAcademicYearFields(),
@@ -184,13 +186,18 @@ class MentorshipServicesWidget extends BaseWidget
                 TextInput::make('data.competition_name')->label('Name of the Academic Competition')->maxLength(150)->required()->columnSpanFull(),
                 TextInput::make('data.sponsor')->label('Name of Sponsor Organization')->maxLength(150)->required(),
                 TextInput::make('data.award_received')->label('Award Received')->maxLength(150)->required(),
-                DatePicker::make('data.date_awarded')->label('Date Awarded')->maxDate(now())->required(),
+                DatePicker::make('data.date_awarded')
+                    ->label('Date Awarded')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
+                    ->maxDate(now())
+                    ->required(),
             ],
             default => [],
         };
 
         $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
+            ->label('Proof Document(s)')
             ->multiple()
             ->reorderable()
             ->required()

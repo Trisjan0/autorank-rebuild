@@ -13,6 +13,8 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
+use Filament\Forms\Get;
 
 class PerformingArtWidget extends BaseWidget
 {
@@ -37,7 +39,7 @@ class PerformingArtWidget extends BaseWidget
                     ->label('Classification')
                     ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title()),
                 Tables\Columns\TextColumn::make('data.date_performed')->label('Date Performed')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -45,7 +47,7 @@ class PerformingArtWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
+                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null;
                         $data['category'] = 'KRA II';
                         $data['type'] = 'creative-performing-art';
                         return $data;
@@ -78,6 +80,7 @@ class PerformingArtWidget extends BaseWidget
                     'drama_theater' => 'Drama/Theater',
                     'others' => 'Others',
                 ])
+                ->searchable()
                 ->required(),
             Select::make('data.classification')
                 ->label('Classification')
@@ -86,15 +89,20 @@ class PerformingArtWidget extends BaseWidget
                     'own_work' => 'Own Work',
                     'work_of_others' => 'Work of Others',
                 ])
-                ->required(),
+                ->searchable()
+                ->required()
+                ->live(),
             DatePicker::make('data.date_performed')
                 ->label('Date Copyrighted / Date Performed')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
             TextInput::make('data.venue')
                 ->label('Venue of Performance')
                 ->maxLength(255)
-                ->required(),
+                ->required()
+                ->hidden(fn(Get $get): bool => $get('data.classification') === 'new_creation'),
             TextInput::make('data.organizer')
                 ->label('Organizer of the Event (or Publisher, if applicable)')
                 ->maxLength(255)

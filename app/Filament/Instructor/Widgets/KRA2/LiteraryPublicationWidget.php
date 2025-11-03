@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class LiteraryPublicationWidget extends BaseWidget
 {
@@ -35,7 +36,7 @@ class LiteraryPublicationWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -77,6 +78,7 @@ class LiteraryPublicationWidget extends BaseWidget
                     'poetry' => 'Poetry',
                     'others' => 'Others',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.reviewer')
                 ->label('Reviewer, Evaluator or Its Equivalent')
@@ -92,6 +94,8 @@ class LiteraryPublicationWidget extends BaseWidget
                 ->required(),
             DatePicker::make('data.date_published')
                 ->label('Date Published')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
             FileUpload::make('google_drive_file_id')

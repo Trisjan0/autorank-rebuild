@@ -18,8 +18,120 @@ class ScoringService
         return (float)($this->caps[$key] ?? 0);
     }
 
+    /**
+     * Maps a submission type to its corresponding score cap key.
+     */
+    private function getCapKeyForType(string $type): ?string
+    {
+        return match ($type) {
+            // KRA I
+            'te-student-evaluation',
+            'te-supervisor-evaluation'
+            => 'kra_1_a_cap', // 60
+
+            'im-sole-authorship',
+            'im-co-authorship',
+            'im-academic-program'
+            => 'kra_1_b_cap', // 30
+
+            'mentorship-adviser',
+            'mentorship-panel',
+            'mentorship-mentor'
+            => 'kra_1_c_cap', // 10
+
+            // KRA II
+            'research-sole-authorship',
+            'research-co-authorship'
+            => 'kra_2_a_cap', // 100
+            'research-citation-local'
+            => 'kra_2_a_3_1_cap', // 40
+            'research-citation-international'
+            => 'kra_2_a_3_2_cap', // 60
+
+            'invention-patent-sole',
+            'invention-patent-co-inventor',
+            'invention-utility-design-sole',
+            'invention-utility-design-co-inventor',
+            'invention-software-new-sole',
+            'invention-software-new-co',
+            'invention-software-updated',
+            'invention-plant-animal-sole',
+            'invention-plant-animal-co'
+            => 'kra_2_b_cap', // 100
+            'r-and-d-patented-local' // This is an assumed type
+            => 'kra_2_b_1_2_1_cap', // 20
+            'r-and-d-patented-international' // This is an assumed type
+            => 'kra_2_b_1_2_2_cap', // 30
+
+            'creative-performing-art',
+            'creative-exhibition',
+            'creative-juried-design',
+            'creative-literary-publication'
+            => 'kra_2_c_cap', // 100
+
+            // KRA III
+            'extension-linkage',
+            'extension-income-generation'
+            => 'kra_3_a_cap', // 30
+
+            'accreditation_services',
+            'judge_examiner',
+            'consultant',
+            'media_service',
+            'training_resource_person',
+            'social_responsibility'
+            => 'kra_3_b_cap', // 50
+
+            'extension-quality-rating'
+            => 'kra_3_c_cap', // 20
+
+            'extension-bonus-designation'
+            => 'kra_3_d_cap', // 20
+
+            // KRA IV
+            'profdev-organization'
+            => 'kra_4_a_cap', // 20
+
+            'profdev-doctorate',
+            'profdev-additional-degree',
+            'profdev-conference-training',
+            'profdev-paper-presentation'
+            => 'kra_4_b_cap', // 60
+            'training-participation' // This is an assumed type
+            => 'kra_4_b_2_cap', // 10
+            'training-paper-presentation' // This is an assumed type
+            => 'kra_4_b_3_cap', // 10
+
+            'profdev-award-recognition'
+            => 'kra_4_c_cap', // 20
+            'profdev-academic-service',
+            'profdev-industry-experience'
+            => 'kra_4_d_cap', // 20
+
+            default => null,
+        };
+    }
+
+    /**
+     * Applies the correct cap to a raw score based on submission type.
+     */
+    private function applyCap(float $rawScore, string $type): array
+    {
+        $capKey = $this->getCapKeyForType($type);
+
+        if (is_null($capKey)) {
+            // No cap defined for this type
+            return ['raw' => $rawScore, 'score' => $rawScore];
+        }
+
+        $cap = $this->getCap($capKey);
+        $score = min($rawScore, $cap);
+
+        return ['raw' => $rawScore, 'score' => $score];
+    }
+
     // KRA I, Criterion A
-    public function calculateTeachingEffectivenessStudentScore(array $data): float
+    public function calculateTeachingEffectivenessStudentScore(array $data, string $type): array
     {
         $average = $this->calculateSpecialAverage(
             $this->getRatingFieldKeys('student'),
@@ -27,12 +139,17 @@ class ScoringService
             (int)($data['student_deducted_semesters'] ?? 0),
             $data['student_deduction_reason'] ?? 'NOT APPLICABLE'
         );
-        // Score is average * (KRA I A Cap * 60%)
         $cappedAverage = min($average, 100.0); // Cap average at 100
-        return $cappedAverage * ($this->getCap('kra_1_a_cap') * 0.60) / 100.0;
+
+        $rawScore = $average * ($this->getCap('kra_1_a_cap') * 0.60) / 100.0;
+        $score = $cappedAverage * ($this->getCap('kra_1_a_cap') * 0.60) / 100.0;
+
+        // Note: This item has special capping logic (average vs raw)
+        // so we don't use the universal applyCap helper
+        return ['raw' => $rawScore, 'score' => $score];
     }
 
-    public function calculateTeachingEffectivenessSupervisorScore(array $data): float
+    public function calculateTeachingEffectivenessSupervisorScore(array $data, string $type): array
     {
         $average = $this->calculateSpecialAverage(
             $this->getRatingFieldKeys('supervisor'),
@@ -40,251 +157,292 @@ class ScoringService
             (int)($data['supervisor_deducted_semesters'] ?? 0),
             $data['supervisor_deduction_reason'] ?? 'NOT APPLICABLE'
         );
-        // Score is average * (KRA I A Cap * 40%)
         $cappedAverage = min($average, 100.0); // Cap average at 100
-        return $cappedAverage * ($this->getCap('kra_1_a_cap') * 0.40) / 100.0;
+
+        $rawScore = $average * ($this->getCap('kra_1_a_cap') * 0.40) / 100.0;
+        $score = $cappedAverage * ($this->getCap('kra_1_a_cap') * 0.40) / 100.0;
+
+        // Note: This item has special capping logic (average vs raw)
+        return ['raw' => $rawScore, 'score' => $score];
     }
 
     // KRA I, Criterion B
-    public function calculateInstructionalMaterialSoleScore(array $data): float
+    public function calculateInstructionalMaterialSoleScore(array $data, string $type): array
     {
         $materialType = $data['material_type'] ?? null;
-        if (!$materialType) return 0.0;
-        return $this->getInstructionalMaterialBaseScore($materialType);
+        if (!$materialType) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = $this->getInstructionalMaterialBaseScore($materialType);
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateInstructionalMaterialCoAuthorScore(array $data): float
+    public function calculateInstructionalMaterialCoAuthorScore(array $data, string $type): array
     {
         $materialType = $data['material_type'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if (!$materialType || $percentage <= 0) return 0.0;
+        if (!$materialType || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
         $baseScore = $this->getInstructionalMaterialBaseScore($materialType);
-        return $baseScore * ($percentage / 100.0);
+        $rawScore = $baseScore * ($percentage / 100.0);
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateAcademicProgramScore(array $data): float
+    public function calculateAcademicProgramScore(array $data, string $type): array
     {
         $role = $data['role'] ?? null;
-        if (!$role) return 0.0;
-        return match ($role) {
+        if (!$role) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = match ($role) {
             'Lead' => 10.0,
             'Contributor' => 5.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA I, Criterion C
-    public function calculateMentorshipAdviserScore(array $data): float
+    public function calculateMentorshipAdviserScore(array $data, string $type): array
     {
-        $type = $data['mentorship_type'] ?? null;
-        if (!$type) return 0.0;
+        $mType = $data['mentorship_type'] ?? null;
+        if (!$mType) return ['raw' => 0.0, 'score' => 0.0];
+
         $totalCount = $this->getMentorshipAcademicYearTotal($data);
-        $multiplier = match ($type) {
+        $multiplier = match ($mType) {
             'special_capstone_project' => 3.0,
             'undergrad_thesis' => 5.0,
             'masters_thesis' => 8.0,
             'dissertation' => 10.0,
             default => 0.0,
         };
-        return $totalCount * $multiplier;
+        $rawScore = $totalCount * $multiplier;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateMentorshipPanelScore(array $data): float
+    public function calculateMentorshipPanelScore(array $data, string $type): array
     {
-        $type = $data['mentorship_type'] ?? null;
-        if (!$type) return 0.0;
+        $mType = $data['mentorship_type'] ?? null;
+        if (!$mType) return ['raw' => 0.0, 'score' => 0.0];
+
         $totalCount = $this->getMentorshipAcademicYearTotal($data);
-        $multiplier = match ($type) {
+        $multiplier = match ($mType) {
             'special_capstone_project' => 1.0,
             'undergrad_thesis' => 1.0,
             'masters_thesis' => 2.0,
             'dissertation' => 2.0,
             default => 0.0,
         };
-        return $totalCount * $multiplier;
+        $rawScore = $totalCount * $multiplier;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateMentorshipMentorScore(array $data): float
+    public function calculateMentorshipMentorScore(array $data, string $type): array
     {
         $dateAwarded = $data['date_awarded'] ?? null;
-        return !empty($dateAwarded) ? 3.0 : 0.0;
+        $rawScore = !empty($dateAwarded) ? 3.0 : 0.0;
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion A: (Published Papers)
-    public function calculateResearchSoleScore(array $data): float
+    public function calculateResearchSoleScore(array $data, string $type): array
     {
         $outputType = $data['output_type'] ?? null;
-        if (!$outputType) return 0.0;
-        return $this->getResearchBaseScore($outputType);
+        if (!$outputType) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = $this->getResearchBaseScore($outputType);
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateResearchCoAuthorScore(array $data): float
+    public function calculateResearchCoAuthorScore(array $data, string $type): array
     {
         $outputType = $data['output_type'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if (!$outputType || $percentage <= 0) return 0.0;
+        if (!$outputType || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
         $baseScore = $this->getResearchBaseScore($outputType);
-        return $baseScore * ($percentage / 100.0);
+        $rawScore = $baseScore * ($percentage / 100.0);
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion A: (Translated Outputs)
-    public function calculateTranslatedOutputLeadScore(array $data): float
+    public function calculateTranslatedOutputLeadScore(array $data, string $type): array
     {
         $dateCompleted = $data['date_completed'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
-        return (!empty($dateCompleted) || !empty($dateUtilized)) ? 35.0 : 0.0;
+        $rawScore = (!empty($dateCompleted) || !empty($dateUtilized)) ? 35.0 : 0.0;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateTranslatedOutputContributorScore(array $data): float
+    public function calculateTranslatedOutputContributorScore(array $data, string $type): array
     {
         $dateCompleted = $data['date_completed'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if ((empty($dateCompleted) && empty($dateUtilized)) || $percentage <= 0) return 0.0;
-        return 35.0 * ($percentage / 100.0); // Base score * percentage
+        if ((empty($dateCompleted) && empty($dateUtilized)) || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = 35.0 * ($percentage / 100.0); // Base score * percentage
+        return $this->applyCap($rawScore, $type);
     }
 
 
     // KRA II, Criterion A: (Citations)
-    public function calculateResearchCitationLocalScore(array $data): float
+    public function calculateResearchCitationLocalScore(array $data, string $type): array
     {
         $citationCount = (int)($data['citation_count'] ?? 0);
-        if ($citationCount <= 0) return 0.0;
+        if ($citationCount <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
         $rawScore = $citationCount * 5.0;
-        $maxScore = $this->getCap('kra_2_a_3_1_cap');
-        return min($rawScore, $maxScore);
+        // Removed old cap logic, applyCap handles it
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateResearchCitationInternationalScore(array $data): float
+    public function calculateResearchCitationInternationalScore(array $data, string $type): array
     {
         $citationCount = (int)($data['citation_count'] ?? 0);
-        if ($citationCount <= 0) return 0.0;
+        if ($citationCount <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
         $rawScore = $citationCount * 10.0;
-        $maxScore = $this->getCap('kra_2_a_3_2_cap');
-        return min($rawScore, $maxScore);
+        // Removed old cap logic, applyCap handles it
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion B (Patented Inventions)
-    public function calculateInventionPatentSoleScore(array $data): float
+    public function calculateInventionPatentSoleScore(array $data, string $type): array
     {
         $stage = $data['patent_stage'] ?? null;
-        if (!$stage) return 0.0;
-        return $this->getInventionPatentBaseScore($stage);
+        if (!$stage) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = $this->getInventionPatentBaseScore($stage);
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateInventionPatentCoInventorScore(array $data): float
+    public function calculateInventionPatentCoInventorScore(array $data, string $type): array
     {
         $stage = $data['patent_stage'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if (!$stage || $percentage <= 0) return 0.0;
+        if (!$stage || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
         $baseScore = $this->getInventionPatentBaseScore($stage);
-        return $baseScore * ($percentage / 100.0);
+        $rawScore = $baseScore * ($percentage / 100.0);
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion B (Utility/Design)
-    public function calculateUtilityDesignSoleScore(array $data): float
+    public function calculateUtilityDesignSoleScore(array $data, string $type): array
     {
-        $type = $data['patent_type'] ?? null;
+        $pType = $data['patent_type'] ?? null;
         $dateGranted = $data['date_granted'] ?? null;
-        if (!$type || empty($dateGranted)) return 0.0;
-        return match ($type) {
+        if (!$pType || empty($dateGranted)) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = match ($pType) {
             'utility_model' => 10.0,
             'industrial_design' => 5.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateUtilityDesignCoInventorScore(array $data): float
+    public function calculateUtilityDesignCoInventorScore(array $data, string $type): array
     {
-        $type = $data['patent_type'] ?? null;
+        $pType = $data['patent_type'] ?? null;
         $dateGranted = $data['date_granted'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if (!$type || empty($dateGranted) || $percentage <= 0) return 0.0;
-        $baseScore = match ($type) {
+        if (!$pType || empty($dateGranted) || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
+        $baseScore = match ($pType) {
             'utility_model' => 10.0,
             'industrial_design' => 5.0,
             default => 0.0,
         };
-        return $baseScore * ($percentage / 100.0);
+        $rawScore = $baseScore * ($percentage / 100.0);
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion B (Commercialized)
-    public function calculateCommercializedLocalScore(array $data): float
+    public function calculateCommercializedLocalScore(array $data, string $type): array
     {
         $datePatented = $data['date_patented'] ?? null;
         $dateCommercialized = $data['date_commercialized'] ?? null;
-        if (empty($datePatented) || empty($dateCommercialized)) return 0.0;
+        if (empty($datePatented) || empty($dateCommercialized)) return ['raw' => 0.0, 'score' => 0.0];
+
         $rawScore = 5.0;
-        $maxScore = $this->getCap('kra_2_b_1_2_1_cap');
-        return min($rawScore, $maxScore);
+        // Removed old cap logic, applyCap handles it
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateCommercializedInternationalScore(array $data): float
+    public function calculateCommercializedInternationalScore(array $data, string $type): array
     {
         $datePatented = $data['date_patented'] ?? null;
         $dateCommercialized = $data['date_commercialized'] ?? null;
-        if (empty($datePatented) || empty($dateCommercialized)) return 0.0;
+        if (empty($datePatented) || empty($dateCommercialized)) return ['raw' => 0.0, 'score' => 0.0];
+
         $rawScore = 10.0;
-        $maxScore = $this->getCap('kra_2_b_1_2_2_cap');
-        return min($rawScore, $maxScore);
+        // Removed old cap logic, applyCap handles it
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion B (Non-Patentable: New Software)
-    public function calculateSoftwareNewSoleScore(array $data): float
+    public function calculateSoftwareNewSoleScore(array $data, string $type): array
     {
         $copyrightNo = $data['copyright_no'] ?? null;
         $dateCopyrighted = $data['date_copyrighted'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
-        return (!empty($copyrightNo) && (!empty($dateCopyrighted) || !empty($dateUtilized))) ? 10.0 : 0.0;
+        $rawScore = (!empty($copyrightNo) && (!empty($dateCopyrighted) || !empty($dateUtilized))) ? 10.0 : 0.0;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateSoftwareNewCoDeveloperScore(array $data): float
+    public function calculateSoftwareNewCoDeveloperScore(array $data, string $type): array
     {
         $copyrightNo = $data['copyright_no'] ?? null;
         $dateCopyrighted = $data['date_copyrighted'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if (empty($copyrightNo) || (empty($dateCopyrighted) && empty($dateUtilized)) || $percentage <= 0) return 0.0;
-        return 10.0 * ($percentage / 100.0); // Base score * percentage
+        if (empty($copyrightNo) || (empty($dateCopyrighted) && empty($dateUtilized)) || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = 10.0 * ($percentage / 100.0); // Base score * percentage
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion B (Non-Patentable: Updated Software)
-    public function calculateSoftwareUpdatedScore(array $data): float
+    public function calculateSoftwareUpdatedScore(array $data, string $type): array
     {
         $copyrightNo = $data['copyright_no'] ?? null;
         $dateCopyrighted = $data['date_copyrighted'] ?? null;
         $dateUtilized = $data['date_utilized'] ?? null;
         $role = $data['developer_role'] ?? null;
 
-        if ((empty($dateCopyrighted) && empty($dateUtilized)) || empty($role)) return 0.0;
+        if ((empty($dateCopyrighted) && empty($dateUtilized)) || empty($role)) return ['raw' => 0.0, 'score' => 0.0];
 
-        return match (strtolower($role)) {
+        $rawScore = match (strtolower($role)) {
             'sole developer' => 4.0,
             'co-developer' => 2.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
 
     // KRA II, Criterion B (Non-Patentable: Plant/Animal/Microbe)
-    public function calculatePlantAnimalSoleScore(array $data): float
+    public function calculatePlantAnimalSoleScore(array $data, string $type): array
     {
         $dateRegistered = $data['date_registered'] ?? null;
         $datePropagation = $data['date_propagation'] ?? null;
-        return (!empty($dateRegistered) && !empty($datePropagation)) ? 10.0 : 0.0;
+        $rawScore = (!empty($dateRegistered) && !empty($datePropagation)) ? 10.0 : 0.0;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculatePlantAnimalCoDeveloperScore(array $data): float
+    public function calculatePlantAnimalCoDeveloperScore(array $data, string $type): array
     {
         $dateRegistered = $data['date_registered'] ?? null;
         $datePropagation = $data['date_propagation'] ?? null;
         $percentage = (float)($data['contribution_percentage'] ?? 0);
-        if (empty($dateRegistered) || empty($datePropagation) || $percentage <= 0) return 0.0;
-        return 10.0 * ($percentage / 100.0); // Base score * percentage
+        if (empty($dateRegistered) || empty($datePropagation) || $percentage <= 0) return ['raw' => 0.0, 'score' => 0.0];
+
+        $rawScore = 10.0 * ($percentage / 100.0); // Base score * percentage
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA II, Criterion C
-    public function calculateCreativePerformingArtScore(array $data): float
+    public function calculateCreativePerformingArtScore(array $data, string $type): array
     {
         $title = $data['title'] ?? null;
         $artType = $data['art_type'] ?? null;
@@ -292,18 +450,19 @@ class ScoringService
         $classification = $data['classification'] ?? null;
 
         if (empty($title) || empty($datePerformed) || empty($artType) || $artType === 'select_option' || empty($classification) || $classification === 'select_option') {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($classification) {
+        $rawScore = match ($classification) {
             'new_creation' => 20.0,
             'own_work' => 10.0,
             'work_of_others' => 10.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateCreativeExhibitionScore(array $data): float
+    public function calculateCreativeExhibitionScore(array $data, string $type): array
     {
         $title = $data['title'] ?? null;
         $classification = $data['classification'] ?? null;
@@ -320,13 +479,14 @@ class ScoringService
             empty($organizer) ||
             empty($venue)
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return 20.0;
+        $rawScore = 20.0;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateCreativeJuriedDesignScore(array $data): float
+    public function calculateCreativeJuriedDesignScore(array $data, string $type): array
     {
         $title = $data['title'] ?? null;
         $classification = $data['classification'] ?? null;
@@ -343,23 +503,24 @@ class ScoringService
             empty($venue) ||
             empty($organizer)
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return 20.0;
+        $rawScore = 20.0;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateCreativeLiteraryPublicationScore(array $data): float
+    public function calculateCreativeLiteraryPublicationScore(array $data, string $type): array
     {
         $publisher = $data['publisher'] ?? null;
         $datePublished = $data['date_published'] ?? null;
         $literaryType = $data['literary_type'] ?? null;
 
         if (empty($publisher) || empty($datePublished) || empty($literaryType) || $literaryType === 'select_option') {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($literaryType) {
+        $rawScore = match ($literaryType) {
             'novel' => 20.0,
             'short_story' => 10.0,
             'essay' => 10.0,
@@ -367,10 +528,11 @@ class ScoringService
             'others' => 10.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA III, Criterion A
-    public function calculateExtensionLinkageScore(array $data): float
+    public function calculateExtensionLinkageScore(array $data, string $type): array
     {
         $partnerName = $data['partner_name'] ?? null;
         $moaStart = $data['moa_start'] ?? null;
@@ -386,17 +548,18 @@ class ScoringService
             empty($moaExpiration) || empty($activities) ||
             empty($activityDate) || empty($nature)
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($facultyRole) {
+        $rawScore = match ($facultyRole) {
             'lead_coordinator' => 5.0,
             'assistant_coordinator' => 3.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateExtensionIncomeGenerationScore(array $data): float
+    public function calculateExtensionIncomeGenerationScore(array $data, string $type): array
     {
         $name = $data['name'] ?? null;
         $coverageStart = $data['coverage_start'] ?? null;
@@ -404,26 +567,27 @@ class ScoringService
         $amount = isset($data['amount']) && is_numeric($data['amount']) ? (float)$data['amount'] : null;
 
         if (empty($name) || empty($coverageStart) || $amount === null || empty($role) || $role === 'select_option') {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        if ($amount <= 0) return 0.0;
+        if ($amount <= 0) return ['raw' => 0.0, 'score' => 0.0];
 
+        $rawScore = 0.0;
         if ($role === 'lead_contributor') {
-            if ($amount <= 6000000) return 6.0;
-            if ($amount <= 12000000) return 12.0;
-            return 18.0;
+            if ($amount <= 6000000) $rawScore = 6.0;
+            elseif ($amount <= 12000000) $rawScore = 12.0;
+            else $rawScore = 18.0;
         } elseif ($role === 'co_contributor') {
-            if ($amount <= 6000000) return 3.0;
-            if ($amount <= 12000000) return 6.0;
-            return 9.0;
+            if ($amount <= 6000000) $rawScore = 3.0;
+            elseif ($amount <= 12000000) $rawScore = 6.0;
+            else $rawScore = 9.0;
         }
 
-        return 0.0;
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA III, Criterion B
-    public function calculateAccreditationServiceScore(array $data): float
+    public function calculateAccreditationServiceScore(array $data, string $type): array
     {
         $agencyName = $data['agency_name'] ?? null;
         $servicesProvided = $data['services_provided'] ?? null;
@@ -433,20 +597,21 @@ class ScoringService
 
         if (
             empty($agencyName) || empty($servicesProvided) || empty($scope) || $scope === 'select_option' ||
-            empty($periodStart) || empty($data['sponsoring_body']) ||
+            empty($periodStart) ||
             $deploymentCount === null || $deploymentCount <= 0
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($scope) {
+        $rawScore = match ($scope) {
             'local' => 8.0,
             'international' => 10.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateJudgeExaminerScore(array $data): float
+    public function calculateJudgeExaminerScore(array $data, string $type): array
     {
         $eventTitle = $data['event_title'] ?? null;
         $organizer = $data['organizer'] ?? null;
@@ -458,40 +623,42 @@ class ScoringService
             empty($eventTitle) || empty($organizer) || empty($eventDate) ||
             empty($awardNature) || $awardNature === 'select_option' || empty($role)
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($awardNature) {
+        $rawScore = match ($awardNature) {
             'research_award' => 2.0,
             'academic_competition' => 1.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateConsultantScore(array $data): float
+    public function calculateConsultantScore(array $data, string $type): array
     {
         $projectTitle = $data['project_title'] ?? null;
         $organizationName = $data['organization_name'] ?? null;
         $periodStart = $data['period_start'] ?? null;
         $periodEnd = $data['period_end'] ?? null;
         $scope = $data['scope'] ?? null;
-        $venue = $data['venue'] ?? null;
+        $role = $data['role'] ?? null;
 
         if (
             empty($projectTitle) || empty($organizationName) || empty($periodStart) ||
-            empty($periodEnd) || empty($scope) || $scope === 'select_option' || empty($venue)
+            empty($periodEnd) || empty($scope) || $scope === 'select_option' || empty($role)
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($scope) {
+        $rawScore = match ($scope) {
             'local' => 8.0,
             'international' => 10.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateMediaServiceScore(array $data): float
+    public function calculateMediaServiceScore(array $data, string $type): array
     {
         $service = $data['service'] ?? null;
         $mediaName = $data['media_name'] ?? null;
@@ -499,19 +666,20 @@ class ScoringService
         $engagementCount = isset($data['engagement_count']) && is_numeric($data['engagement_count']) ? (int)$data['engagement_count'] : null;
 
         if (empty($service) || $service === 'select_option' || empty($periodStart)) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($service) {
+        $rawScore = match ($service) {
             'writer_occasional_newspaper' => (!empty($engagementCount) && $engagementCount > 0) ? ($engagementCount * 2.0) : 0.0,
             'writer_regular_newspaper'    => (!empty($mediaName)) ? 10.0 : 0.0,
             'host_tv_radio_program'     => (!empty($mediaName)) ? 10.0 : 0.0,
             'guest_technical_expert'      => (!empty($engagementCount) && $engagementCount > 0) ? ($engagementCount * 1.0) : 0.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateTrainingResourcePersonScore(array $data): float
+    public function calculateTrainingResourcePersonScore(array $data, string $type): array
     {
         $trainingTitle = $data['training_title'] ?? null;
         $participationType = $data['participation_type'] ?? null;
@@ -527,17 +695,18 @@ class ScoringService
             empty($scope) || $scope === 'select_option' ||
             $totalHours === null || $totalHours <= 0
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($scope) {
+        $rawScore = match ($scope) {
             'local' => 2.0 * $totalHours,
             'international' => 3.0 * $totalHours,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateSocialResponsibilityScore(array $data): float
+    public function calculateSocialResponsibilityScore(array $data, string $type): array
     {
         $activityTitle = $data['activity_title'] ?? null;
         $communityName = $data['community_name'] ?? null;
@@ -551,19 +720,20 @@ class ScoringService
             empty($role) || $role === 'select_option' ||
             empty($activityDate)
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($role) {
+        $rawScore = match ($role) {
             'head' => 5.0,
             'participant' => 2.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
 
     // KRA III, Criterion C
-    public function calculateQualityOfExtensionScore(array $data): float
+    public function calculateQualityOfExtensionScore(array $data, string $type): array
     {
         $average = $this->calculateSpecialAverage(
             $this->getExtensionRatingFieldKeys(),
@@ -573,21 +743,25 @@ class ScoringService
         );
 
         $cappedAverage = min($average, 100.0);
-        return $cappedAverage * $this->getCap('kra_3_c_cap') / 100.0;
+        $rawScore = $average * $this->getCap('kra_3_c_cap') / 100.0;
+        $score = $cappedAverage * $this->getCap('kra_3_c_cap') / 100.0;
+
+        // Note: This item has special capping logic (average vs raw)
+        return ['raw' => $rawScore, 'score' => $score];
     }
 
     // KRA III, Criterion D (Bonus)
-    public function calculateBonusDesignationScore(array $data): float
+    public function calculateBonusDesignationScore(array $data, string $type): array
     {
         $designation = $data['designation'] ?? null;
         $periodStart = $data['period_start'] ?? null;
         $periodEnd = $data['period_end'] ?? null;
 
         if (empty($designation) || $designation === 'select_option' || empty($periodStart) || empty($periodEnd)) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($designation) {
+        $rawScore = match ($designation) {
             'president_oic' => 20.0,
             'vice_president' => 15.0,
             'chancellor' => 10.0,
@@ -608,10 +782,11 @@ class ScoringService
             'department_committee_member' => 1.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion A
-    public function calculateProfOrgScore(array $data): float
+    public function calculateProfOrgScore(array $data, string $type): array
     {
         $orgName = $data['name'] ?? null;
         $orgType = $data['type'] ?? null;
@@ -623,14 +798,15 @@ class ScoringService
             empty($orgName) || empty($orgType) || empty($activity) ||
             empty($dateActivity) || empty($role) || $role === 'select_option'
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return 5.0;
+        $rawScore = 5.0;
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion B (Educational Qualifications)
-    public function calculateDoctorateDegreeScore(array $data): float
+    public function calculateDoctorateDegreeScore(array $data, string $type): array
     {
         $degreeName = $data['name'] ?? null;
         $institution = $data['institution'] ?? null;
@@ -638,13 +814,14 @@ class ScoringService
         $isQualified = isset($data['is_qualified']) ? (bool)$data['is_qualified'] : null;
 
         if (empty($degreeName) || empty($institution) || empty($dateCompleted) || $isQualified === null) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return !$isQualified ? 40.0 : 0.0;
+        $rawScore = !$isQualified ? 40.0 : 0.0;
+        return $this->applyCap($rawScore, $type);
     }
 
-    public function calculateAdditionalDegreeScore(array $data): float
+    public function calculateAdditionalDegreeScore(array $data, string $type): array
     {
         $degreeType = $data['degree_type'] ?? null;
         $degreeName = $data['name'] ?? null;
@@ -652,54 +829,57 @@ class ScoringService
         $dateCompleted = $data['date_completed'] ?? null;
 
         if (empty($degreeName) || empty($institution) || empty($dateCompleted) || empty($degreeType) || $degreeType === 'select_option') {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($degreeType) {
+        $rawScore = match ($degreeType) {
             'additional_doctorate' => 40.0,
             'additional_masters' => 20.0,
             'post_doctorate_diploma' => 10.0,
             'post_masters_diploma' => 10.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion B (Conferences/Training)
-    public function calculateConferenceTrainingScore(array $data): float
+    public function calculateConferenceTrainingScore(array $data, string $type): array
     {
         $confName = $data['name'] ?? null;
         $scope = $data['scope'] ?? null;
 
         if (empty($confName) || empty($scope) || $scope === 'select_option') {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($scope) {
+        $rawScore = match ($scope) {
             'local' => 1.0,
             'international' => 2.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion B (Paper Presentations)
-    public function calculatePaperPresentationScore(array $data): float
+    public function calculatePaperPresentationScore(array $data, string $type): array
     {
         $paperTitle = $data['title'] ?? null;
         $scope = $data['scope'] ?? null;
 
         if (empty($paperTitle) || empty($scope) || $scope === 'select_option') {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($scope) {
+        $rawScore = match ($scope) {
             'local' => 3.0,
             'international' => 5.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion C (Awards & Recognition)
-    public function calculateAwardRecognitionScore(array $data): float
+    public function calculateAwardRecognitionScore(array $data, string $type): array
     {
         $awardName = $data['name'] ?? null;
         $awardingBody = $data['awarding_body'] ?? null;
@@ -711,19 +891,20 @@ class ScoringService
             empty($awardName) || empty($awardingBody) || empty($dateGiven) ||
             empty($venue) || empty($scope) || $scope === 'select_option'
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
-        return match ($scope) {
+        $rawScore = match ($scope) {
             'institutional' => 2.0,
             'local' => 3.0,
             'regional' => 4.0,
             default => 0.0,
         };
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion D (Bonus - Academic Service)
-    public function calculateAcademicServiceScore(array $data): float
+    public function calculateAcademicServiceScore(array $data, string $type): array
     {
         $designation = $data['designation'] ?? null;
         $heiName = $data['hei_name'] ?? null;
@@ -734,7 +915,7 @@ class ScoringService
             empty($designation) || $designation === 'select_option' || empty($heiName) ||
             empty($periodStart) || empty($periodEnd) || $numYears === null || $numYears <= 0
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
         $multiplier = match ($designation) {
@@ -745,11 +926,12 @@ class ScoringService
             default => 0.0,
         };
 
-        return $multiplier * $numYears;
+        $rawScore = $multiplier * $numYears;
+        return $this->applyCap($rawScore, $type);
     }
 
     // KRA IV, Criterion D (Bonus - Industry Experience)
-    public function calculateIndustryExperienceScore(array $data): float
+    public function calculateIndustryExperienceScore(array $data, string $type): array
     {
         $orgName = $data['org_name'] ?? null;
         $designation = $data['designation'] ?? null;
@@ -761,7 +943,7 @@ class ScoringService
             empty($orgName) || empty($designation) || $designation === 'select_option' ||
             empty($periodStart) || empty($periodEnd) || $numYears === null || $numYears <= 0
         ) {
-            return 0.0;
+            return ['raw' => 0.0, 'score' => 0.0];
         }
 
         $multiplier = match ($designation) {
@@ -771,7 +953,8 @@ class ScoringService
             default => 0.0,
         };
 
-        return $multiplier * $numYears;
+        $rawScore = $multiplier * $numYears;
+        return $this->applyCap($rawScore, $type);
     }
 
     // Private Helpers

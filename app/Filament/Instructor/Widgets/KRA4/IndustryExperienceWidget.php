@@ -4,7 +4,7 @@ namespace App\Filament\Instructor\Widgets\KRA4;
 
 use App\Models\Submission;
 use Carbon\Carbon;
-use Closure; // Added for custom validation rule
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -15,6 +15,8 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedNumericInput;
+use App\Tables\Columns\ScoreColumn;
 
 class IndustryExperienceWidget extends BaseWidget
 {
@@ -40,11 +42,11 @@ class IndustryExperienceWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.no_of_years')->label('No. of Years'),
                 Tables\Columns\TextColumn::make('data.period_start')->label('Period Start')->date(),
                 Tables\Columns\TextColumn::make('data.period_end')->label('Period End')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Add Industry Experience')
+                    ->label('Add')
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
@@ -85,20 +87,24 @@ class IndustryExperienceWidget extends BaseWidget
                 ->searchable(),
             DatePicker::make('data.period_start')
                 ->label('Period Covered Start')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now())
                 ->live(),
             DatePicker::make('data.period_end')
                 ->label('Period Covered End')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->minDate(fn(Get $get) => $get('data.period_start'))
                 ->live(),
-            TextInput::make('data.no_of_years')
+            TrimmedNumericInput::make('data.no_of_years')
                 ->label('Number of Years')
-                ->numeric()
+                ->step('0.01')
                 ->required()
                 ->minValue(0)
-                ->helperText('Please ensure this matches the duration calculated from the Period Covered dates.')
+                ->helperText('Please ensure this matches the duration from the Period Covered dates.')
                 ->rules([
                     function (Get $get) {
                         return function (string $attribute, $value, Closure $fail) use ($get) {

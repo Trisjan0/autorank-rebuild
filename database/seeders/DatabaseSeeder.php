@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             FacultyRankSeeder::class,
             UserSeeder::class,
             KraWeightSeeder::class,
+            ScoreCapsSeeder::class,
         ]);
     }
 }

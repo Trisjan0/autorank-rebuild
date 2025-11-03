@@ -12,6 +12,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class AwardsRecognitionWidget extends BaseWidget
 {
@@ -36,7 +37,7 @@ class AwardsRecognitionWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.awarding_body')->label('Award-Giving Body'),
                 Tables\Columns\TextColumn::make('data.date_given')->label('Date Given')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -76,6 +77,7 @@ class AwardsRecognitionWidget extends BaseWidget
                     'local' => 'Local',
                     'regional' => 'Regional',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.awarding_body')
                 ->label('Award-Giving Body/Organization')
@@ -83,6 +85,8 @@ class AwardsRecognitionWidget extends BaseWidget
                 ->maxLength(255),
             DatePicker::make('data.date_given')
                 ->label('Date the Award was Given')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
             TextInput::make('data.venue')

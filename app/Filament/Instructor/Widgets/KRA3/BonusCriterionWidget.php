@@ -12,6 +12,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class BonusCriterionWidget extends BaseWidget
 {
@@ -36,7 +37,7 @@ class BonusCriterionWidget extends BaseWidget
                     ->wrap(),
                 Tables\Columns\TextColumn::make('data.period_start')->label('Effectivity Start')->date(),
                 Tables\Columns\TextColumn::make('data.period_end')->label('Effectivity End')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -80,9 +81,9 @@ class BonusCriterionWidget extends BaseWidget
                     'project_head_kra3d' => 'Project Head',
                     'department_head' => 'Department Head',
                     'institution_committee_chair' => 'Institution-level Committee Chair',
+                    'institution_committee_member' => 'Institution-level Committee Member',
                     'college_secretary' => 'College Secretary',
                     'program_chair' => 'Program Chair/Project Head',
-                    'institution_committee_member' => 'Institution-level Committee Member',
                     'department_committee_chair' => 'Department-level Committee Chair',
                     'department_committee_member' => 'Department-level Committee Member',
                 ])
@@ -91,10 +92,15 @@ class BonusCriterionWidget extends BaseWidget
                 ->columnSpanFull(),
             DatePicker::make('data.period_start')
                 ->label('Effectivity Period Start')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
-                ->maxDate(now()),
+                ->maxDate(now())
+                ->live(),
             DatePicker::make('data.period_end')
                 ->label('Effectivity Period End')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->minDate(fn(Get $get) => $get('data.period_start')),
             FileUpload::make('google_drive_file_id')

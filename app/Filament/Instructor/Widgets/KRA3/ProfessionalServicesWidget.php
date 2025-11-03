@@ -18,6 +18,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class ProfessionalServicesWidget extends BaseWidget
 {
@@ -58,7 +60,7 @@ class ProfessionalServicesWidget extends BaseWidget
             'consultant' => 'consultant',
             'media_service' => 'media_service',
             'training_resource_person' => 'training_resource_person',
-            default => 'unknown',
+            default => 'accreditation_services',
         };
     }
 
@@ -81,7 +83,7 @@ class ProfessionalServicesWidget extends BaseWidget
                         ->formatStateUsing(fn(?string $state): string => Str::title($state))
                         ->badge(),
                     Tables\Columns\TextColumn::make('data.deployment_count')->label('No. of Days'),
-                    Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                    ScoreColumn::make('score'),
                 ];
                 break;
             case 'judge_examiner':
@@ -93,7 +95,7 @@ class ProfessionalServicesWidget extends BaseWidget
                         ->label('Nature')
                         ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
                         ->badge(),
-                    Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                    ScoreColumn::make('score'),
                 ];
                 break;
             case 'consultant':
@@ -105,7 +107,7 @@ class ProfessionalServicesWidget extends BaseWidget
                         ->formatStateUsing(fn(?string $state): string => Str::title($state))
                         ->badge(),
                     Tables\Columns\TextColumn::make('data.role')->label('Role'),
-                    Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                    ScoreColumn::make('score'),
                 ];
                 break;
             case 'media_service':
@@ -124,20 +126,24 @@ class ProfessionalServicesWidget extends BaseWidget
                             }
                             return in_array($record->data['service'], ['writer_occasional_newspaper', 'guest_technical_expert']);
                         }),
-                    Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                    ScoreColumn::make('score'),
                 ];
                 break;
             case 'training_resource_person':
                 $columns = [
                     Tables\Columns\TextColumn::make('data.training_title')->label('Title of Training')->wrap(),
-                    Tables\Columns\TextColumn::make('data.participation_type')->label('Participation')->badge(),
+                    Tables\Columns\TextColumn::make('data.participation_type')
+                        ->label('Participation')
+                        ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                        ->badge()
+                        ->wrap(),
                     Tables\Columns\TextColumn::make('data.organizer')->label('Organizer'),
                     Tables\Columns\TextColumn::make('data.scope')
                         ->label('Scope')
                         ->formatStateUsing(fn(?string $state): string => Str::title($state))
                         ->badge(),
                     Tables\Columns\TextColumn::make('data.total_hours')->label('Total Hours'),
-                    Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                    ScoreColumn::make('score'),
                 ];
                 break;
             default:
@@ -203,13 +209,25 @@ class ProfessionalServicesWidget extends BaseWidget
     {
         return [
             TextInput::make('data.agency_name')->label('Name of Agency/Organization')->required()->maxLength(255)->columnSpanFull(),
-            DatePicker::make('data.period_start')->label('Appointment Period Start')->required()->maxDate(now()),
-            DatePicker::make('data.period_end')->label('Appointment Period End')->required()->minDate(fn(Get $get) => $get('data.period_start')),
+            DatePicker::make('data.period_start')
+                ->label('Appointment Period Start')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->maxDate(now())
+                ->live(),
+            DatePicker::make('data.period_end')
+                ->label('Appointment Period End')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->minDate(fn(Get $get) => $get('data.period_start')),
             Textarea::make('data.services_provided')->label('QA-related Services Provided')->required()->maxLength(65535)->columnSpanFull(),
             Select::make('data.scope')->label('Scope')
                 ->options(['local' => 'Local', 'international' => 'International'])
+                ->searchable()
                 ->required(),
-            TextInput::make('data.deployment_count')->label('No. of Days Rendered')->integer()->required()->minValue(1),
+            TrimmedIntegerInput::make('data.deployment_count')->label('No. of Days Rendered')->required()->minValue(1),
         ];
     }
 
@@ -218,12 +236,18 @@ class ProfessionalServicesWidget extends BaseWidget
         return [
             Textarea::make('data.event_title')->label('Title of the Event/Activity')->required()->maxLength(65535)->columnSpanFull(),
             TextInput::make('data.organizer')->label('Organizer/Sponsor')->required()->maxLength(255),
-            DatePicker::make('data.event_date')->label('Date of Event')->required()->maxDate(now()),
+            DatePicker::make('data.event_date')
+                ->label('Date of Event')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->maxDate(now()),
             Select::make('data.award_nature')->label('Nature of the Award')
                 ->options([
                     'research_award' => 'Research Award',
                     'academic_competition' => 'Academic Competition',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.venue')->label('Venue')->required()->maxLength(255),
             TextInput::make('data.role')->label('Role (e.g., Judge, Examiner)')->required()->maxLength(255),
@@ -235,10 +259,22 @@ class ProfessionalServicesWidget extends BaseWidget
         return [
             Textarea::make('data.project_title')->label('Title of the Project/Consultancy')->required()->maxLength(65535)->columnSpanFull(),
             TextInput::make('data.organization_name')->label('Name of Organization/Sponsoring Body')->required()->maxLength(255)->columnSpanFull(),
-            DatePicker::make('data.period_start')->label('Period of Engagement Start')->required()->maxDate(now()),
-            DatePicker::make('data.period_end')->label('Period of Engagement End')->required()->minDate(fn(Get $get) => $get('data.period_start')),
+            DatePicker::make('data.period_start')
+                ->label('Period of Engagement Start')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->maxDate(now())
+                ->live(),
+            DatePicker::make('data.period_end')
+                ->label('Period of Engagement End')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->minDate(fn(Get $get) => $get('data.period_start')),
             Select::make('data.scope')->label('Scope')
                 ->options(['local' => 'Local', 'international' => 'International'])
+                ->searchable()
                 ->required(),
             TextInput::make('data.role')->label('Role')->required()->maxLength(255),
         ];
@@ -254,18 +290,27 @@ class ProfessionalServicesWidget extends BaseWidget
                     'host_tv_radio_program' => 'Host of TV/Radio Program',
                     'guest_technical_expert' => 'Guesting as Technical Expert for TV or Radio',
                 ])
+                ->searchable()
                 ->required()
                 ->live()
                 ->columnSpanFull(),
             TextInput::make('data.media_name')->label('Name of Media (Newspaper/Magazine/Station/Network)')->required()->maxLength(255),
             TextInput::make('data.program_title')->label('Title of Newspaper Column or TV/Radio Program')->required()->maxLength(255),
-            DatePicker::make('data.period_start')->label('Date/Period Started')->required()->maxDate(now()),
-            DatePicker::make('data.period_end')->label('Date/Period Ended')
+            DatePicker::make('data.period_start')
+                ->label('Date/Period Started')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->maxDate(now())
+                ->live(),
+            DatePicker::make('data.period_end')
+                ->label('Date/Period Ended')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->minDate(fn(Get $get) => $get('data.period_start'))
                 ->visible(fn(Get $get): bool => $get('data.service') === 'writer_regular_newspaper' || $get('data.service') === 'host_tv_radio_program'),
-            TextInput::make('data.engagement_count')->label('No. of Engagements/Guestings')
-                ->integer()
+            TrimmedIntegerInput::make('data.engagement_count')->label('No. of Engagements/Guestings')
                 ->required()
                 ->minValue(1)
                 ->visible(fn(Get $get): bool => $get('data.service') === 'writer_occasional_newspaper' || $get('data.service') === 'guest_technical_expert'),
@@ -286,14 +331,26 @@ class ProfessionalServicesWidget extends BaseWidget
                     'panelist' => 'Panelist',
                     'other' => 'Other',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.organizer')->label('Organizer/Sponsoring Body')->required()->maxLength(255),
-            DatePicker::make('data.period_start')->label('Date Conducted/Start Date')->required()->maxDate(now()),
-            DatePicker::make('data.period_end')->label('End Date (if applicable)')->minDate(fn(Get $get) => $get('data.period_start')),
+            DatePicker::make('data.period_start')
+                ->label('Date Conducted/Start Date')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->required()
+                ->maxDate(now())
+                ->live(),
+            DatePicker::make('data.period_end')
+                ->label('End Date (if applicable)')
+                ->native(false)
+                ->displayFormat('m/d/Y')
+                ->minDate(fn(Get $get) => $get('data.period_start')),
             Select::make('data.scope')->label('Scope')
                 ->options(['local' => 'Local', 'international' => 'International'])
+                ->searchable()
                 ->required(),
-            TextInput::make('data.total_hours')->label('Total No. of Hours')->integer()->required()->minValue(1),
+            TrimmedIntegerInput::make('data.total_hours')->label('Total No. of Hours')->required()->minValue(1),
         ];
     }
 }

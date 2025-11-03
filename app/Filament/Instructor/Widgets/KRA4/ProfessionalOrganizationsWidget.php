@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class ProfessionalOrganizationsWidget extends BaseWidget
 {
@@ -35,9 +36,10 @@ class ProfessionalOrganizationsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.role')
                     ->label('Role/Contribution')
                     ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->badge()
                     ->wrap(),
                 Tables\Columns\TextColumn::make('data.date_activity')->label('Date of Activity')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -76,6 +78,8 @@ class ProfessionalOrganizationsWidget extends BaseWidget
                 ->maxLength(255),
             DatePicker::make('data.date_activity')
                 ->label('Date of Activity')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
             Textarea::make('data.activity')

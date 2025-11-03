@@ -13,6 +13,8 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
+use Filament\Forms\Get;
 
 class LinkagesWidget extends BaseWidget
 {
@@ -35,7 +37,7 @@ class LinkagesWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.moa_start')->label('MOA Start')->date(),
                 Tables\Columns\TextColumn::make('data.moa_expiration')->label('MOA Expiration')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -79,15 +81,21 @@ class LinkagesWidget extends BaseWidget
                     'lead_coordinator' => 'Lead Coordinator',
                     'assistant_coordinator' => 'Assistant Coordinator',
                 ])
+                ->searchable()
                 ->required(),
             DatePicker::make('data.moa_start')
                 ->label('MOA Start Date')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
-                ->maxDate(now()),
+                ->maxDate(now())
+                ->live(),
             DatePicker::make('data.moa_expiration')
                 ->label('MOA Expiration Date')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
-                ->minDate(fn(callable $get) => $get('data.moa_start')),
+                ->minDate(fn(Get $get) => $get('data.moa_start')),
             Textarea::make('data.activities')
                 ->label('Activities Conducted Based on MOA')
                 ->helperText('Not necessarily involving the faculty.')
@@ -96,6 +104,8 @@ class LinkagesWidget extends BaseWidget
                 ->columnSpanFull(),
             DatePicker::make('data.activity_date')
                 ->label('Date of Activity')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
             FileUpload::make('google_drive_file_id')

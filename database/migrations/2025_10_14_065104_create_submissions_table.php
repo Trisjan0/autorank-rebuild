@@ -20,6 +20,9 @@ return new class extends Migration
             $table->json('data'); // Stores all unique fields for each type
             $table->string('filename')->nullable();
             $table->json('google_drive_file_id')->nullable();
+            $table->decimal('raw_score', 8, 2)
+                ->nullable()
+                ->comment('The raw, uncapped score before caps are applied.');;
             $table->decimal('score', 8, 2)->nullable();
             $table->string('status')->default('For Submission');
             $table->timestamps();

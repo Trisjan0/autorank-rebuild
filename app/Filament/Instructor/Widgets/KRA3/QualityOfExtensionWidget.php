@@ -14,6 +14,9 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Forms\Components\TrimmedNumericInput;
+use App\Tables\Columns\ScoreColumn;
 
 class QualityOfExtensionWidget extends BaseWidget
 {
@@ -60,9 +63,50 @@ class QualityOfExtensionWidget extends BaseWidget
             ->columns([
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Last Updated')
-                    ->dateTime()
+                    ->dateTime('M j, Y g:ia')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+
+                Tables\Columns\TextColumn::make('average_rating')
+                    ->label('Overall Average Rating')
+                    ->numeric(2, '.', ',')
+                    ->state(function (Submission $record): float {
+                        $data = $record->data;
+                        $prefix = 'client';
+
+                        $keys = [];
+                        for ($year = 1; $year <= 4; $year++) {
+                            for ($sem = 1; $sem <= 2; $sem++) {
+                                $keys[] = "{$prefix}_ay{$year}_sem{$sem}";
+                            }
+                        }
+
+                        $ratings = [];
+                        foreach ($keys as $key) {
+                            if (isset($data[$key]) && is_numeric($data[$key])) {
+                                $ratings[] = min((float)$data[$key], 100.0);
+                            } else {
+                                $ratings[] = 0.0;
+                            }
+                        }
+
+                        $sum = array_sum($ratings);
+                        if ($sum === 0.0) return 0.0;
+
+                        $totalSemesters = count($keys);
+                        $deductedSemesters = (int)($data["{$prefix}_deducted_semesters"] ?? 0);
+                        $reason = $data["{$prefix}_deduction_reason"] ?? 'NOT APPLICABLE';
+                        $isValidDeduction = $reason !== 'NOT APPLICABLE' && $reason !== 'SELECT OPTION';
+
+                        $divisor = $totalSemesters;
+                        if ($isValidDeduction && $deductedSemesters > 0 && $deductedSemesters < $totalSemesters) {
+                            $divisor = $totalSemesters - $deductedSemesters;
+                        }
+                        $divisor = max(1, $divisor);
+
+                        return $sum / $divisor;
+                    }),
+
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -102,25 +146,17 @@ class QualityOfExtensionWidget extends BaseWidget
 
             $fields[] = Section::make($ayLabel)
                 ->schema([
-                    TextInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem1")
+                    TrimmedNumericInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem1")
                         ->label('1st Semester Rating')
-                        ->type('number')
                         ->step('0.01')
                         ->rules(['numeric', 'between:0,100'])
-                        ->extraInputAttributes([
-                            'onkeydown' => "return !['e','E','+','-'].includes(event.key);",
-                        ])
                         ->minValue(0)
                         ->maxValue(100)
                         ->required(),
-                    TextInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem2")
+                    TrimmedNumericInput::make("data.{$prefix}_ay{$yearKeySuffix}_sem2")
                         ->label('2nd Semester Rating')
-                        ->type('number')
                         ->step('0.01')
                         ->rules(['numeric', 'between:0,100'])
-                        ->extraInputAttributes([
-                            'onkeydown' => "return !['e','E','+','-'].includes(event.key);",
-                        ])
                         ->minValue(0)
                         ->maxValue(100)
                         ->required(),
@@ -153,12 +189,12 @@ class QualityOfExtensionWidget extends BaseWidget
                             'ON APPROVED MATERNITY LEAVE' => 'On Approved Maternity Leave',
                         ])
                         ->default('NOT APPLICABLE')
+                        ->searchable()
                         ->required()
                         ->live(),
 
-                    TextInput::make($deductedSemestersKey)
+                    TrimmedIntegerInput::make($deductedSemestersKey)
                         ->label('Number of Semesters to Deduct')
-                        ->integer()
                         ->minValue(0)
                         ->maxValue(7)
                         ->default(0)

@@ -17,6 +17,9 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Filament\Forms\Get;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class InstructionalMaterialsWidget extends BaseWidget
 {
@@ -29,6 +32,16 @@ class InstructionalMaterialsWidget extends BaseWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn(): Builder => $this->getTableQuery())
+            ->heading(fn(): ?string => $this->getTableHeading())
+            ->columns($this->getTableColumns())
+            ->headerActions($this->getTableHeaderActions())
+            ->actions($this->getTableActions());
     }
 
     protected function getTableQuery(): Builder
@@ -62,7 +75,8 @@ class InstructionalMaterialsWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
                 Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+
+                ScoreColumn::make('score'),
             ],
 
             'co_authorship' => [
@@ -74,7 +88,8 @@ class InstructionalMaterialsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
                 Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
                 Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%'),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+
+                ScoreColumn::make('score'),
             ],
 
             'academic_program' => [
@@ -82,7 +97,8 @@ class InstructionalMaterialsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.program_type')->label('Type of Program')->badge(),
                 Tables\Columns\TextColumn::make('data.role')->label('Role'),
                 Tables\Columns\TextColumn::make('data.academic_year_implemented')->label('AY Implemented'),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+
+                ScoreColumn::make('score'),
             ],
 
             default => [],
@@ -147,24 +163,29 @@ class InstructionalMaterialsWidget extends BaseWidget
                             'multimedia_material' => 'Multimedia Teaching Material',
                             'testing_material' => 'Testing Material',
                         ])
+                        ->searchable()
                         ->required(),
                     TextInput::make('data.reviewer')->label('Reviewer or Its Equivalent')->maxLength(150)->required(),
                     TextInput::make('data.publisher')->label('Publisher/Repository')->maxLength(150)->required(),
                     DatePicker::make('data.date_published')
                         ->label('Date Published')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
                         ->maxDate(now())
+                        ->live()
                         ->required(),
                     DatePicker::make('data.date_approved')
                         ->label('Date Approved for Use')
+                        ->native(false)
+                        ->displayFormat('m/d/Y')
                         ->maxDate(now())
-                        ->rule('after_or_equal:data.date_published')
+                        ->minDate(fn(Get $get) => $get('data.date_published'))
                         ->required(),
                 ];
 
                 if ($this->activeTable === 'co_authorship') {
-                    $schema[] = TextInput::make('data.contribution_percentage')
+                    $schema[] = TrimmedIntegerInput::make('data.contribution_percentage')
                         ->label('% Contribution')
-                        ->numeric()
                         ->minValue(1)
                         ->maxValue(100)
                         ->required();
@@ -194,6 +215,7 @@ class InstructionalMaterialsWidget extends BaseWidget
                             'New Program' => 'New Program',
                             'Revised Program' => 'Revised Program',
                         ])
+                        ->searchable()
                         ->required(),
 
                     TextInput::make('data.board_approval')
@@ -213,13 +235,14 @@ class InstructionalMaterialsWidget extends BaseWidget
                             'Lead' => 'Lead',
                             'Contributor' => 'Contributor',
                         ])
+                        ->searchable()
                         ->required(),
                 ];
                 break;
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
+            ->label('Proof Document(s)')
             ->reorderable()
             ->required()
             ->disk('private')

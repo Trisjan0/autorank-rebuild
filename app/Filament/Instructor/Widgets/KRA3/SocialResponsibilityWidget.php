@@ -16,6 +16,8 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class SocialResponsibilityWidget extends BaseWidget
 {
@@ -40,7 +42,7 @@ class SocialResponsibilityWidget extends BaseWidget
                     ->formatStateUsing(fn(?string $state): string => Str::title($state))
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.activity_date')->label('Activity Date')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -79,9 +81,8 @@ class SocialResponsibilityWidget extends BaseWidget
                 ->required()
                 ->maxLength(255),
 
-            TextInput::make('data.beneficiary_count')
+            TrimmedIntegerInput::make('data.beneficiary_count')
                 ->label('No. of Beneficiaries')
-                ->integer()
                 ->required()
                 ->minValue(1),
 
@@ -91,10 +92,13 @@ class SocialResponsibilityWidget extends BaseWidget
                     'head' => 'Head',
                     'participant' => 'Participant',
                 ])
+                ->searchable()
                 ->required(),
 
             DatePicker::make('data.activity_date')
                 ->label('Activity Date')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
 

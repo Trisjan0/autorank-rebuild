@@ -13,6 +13,9 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedNumericInput;
+use App\Tables\Columns\ScoreColumn;
+use Filament\Forms\Get;
 
 class IncomeGenerationWidget extends BaseWidget
 {
@@ -37,7 +40,7 @@ class IncomeGenerationWidget extends BaseWidget
                     ->label('Total Amount')
                     ->numeric(decimalPlaces: 2)
                     ->prefix('₱'),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -76,21 +79,26 @@ class IncomeGenerationWidget extends BaseWidget
                     'lead_contributor' => 'Lead Contributor',
                     'co_contributor' => 'Co-contributor',
                 ])
+                ->searchable()
                 ->required(),
-            TextInput::make('data.amount')
+            TrimmedNumericInput::make('data.amount')
                 ->label('Total Amount (Actual Income)')
-                ->integer()
                 ->prefix('₱')
                 ->required()
                 ->minValue(0),
             DatePicker::make('data.coverage_start')
                 ->label('Coverage Period Start')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
-                ->maxDate(now()),
+                ->maxDate(now())
+                ->live(),
             DatePicker::make('data.coverage_end')
                 ->label('Coverage Period End')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
-                ->minDate(fn(callable $get) => $get('data.coverage_start')),
+                ->minDate(fn(Get $get) => $get('data.coverage_start')),
             FileUpload::make('google_drive_file_id')
                 ->label('Proof Document(s) (Evidence Link)')
                 ->multiple()

@@ -18,6 +18,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class EducationalQualificationsWidget extends BaseWidget
 {
@@ -77,7 +78,7 @@ class EducationalQualificationsWidget extends BaseWidget
                 Tables\Columns\IconColumn::make('data.is_qualified')
                     ->label('Claimed for Sub-rank Increase?')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ];
         }
 
@@ -89,7 +90,7 @@ class EducationalQualificationsWidget extends BaseWidget
             Tables\Columns\TextColumn::make('data.name')->label('Degree/Diploma/Cert Name')->wrap(),
             Tables\Columns\TextColumn::make('data.institution')->label('Name of HEI'),
             Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
-            Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+            ScoreColumn::make('score'),
         ];
     }
 
@@ -140,6 +141,8 @@ class EducationalQualificationsWidget extends BaseWidget
                     ->columnSpanFull(),
                 DatePicker::make('data.date_completed')
                     ->label('Date Completed')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
                     ->required()
                     ->maxDate(now()),
                 Toggle::make('data.is_qualified')
@@ -171,6 +174,8 @@ class EducationalQualificationsWidget extends BaseWidget
                     ->columnSpanFull(),
                 DatePicker::make('data.date_completed')
                     ->label('Date Completed')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
                     ->required()
                     ->maxDate(now()),
             ];

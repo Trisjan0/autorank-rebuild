@@ -18,6 +18,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class PublishedPapersWidget extends BaseWidget
 {
@@ -69,7 +71,7 @@ class PublishedPapersWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             'co_authorship' => [
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
@@ -82,7 +84,7 @@ class PublishedPapersWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.contribution_percentage')
                     ->label('% Contribution')
                     ->suffix('%'),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             default => [],
         };
@@ -143,6 +145,7 @@ class PublishedPapersWidget extends BaseWidget
                     'other_peer_reviewed_output' => 'Other Peer-Reviewed Output',
                 ])
                 ->required()
+                ->searchable()
                 ->live()
                 ->afterStateUpdated(function ($state, callable $set) {
                     if ($state === 'journal_article') {
@@ -171,21 +174,22 @@ class PublishedPapersWidget extends BaseWidget
 
             DatePicker::make('data.date_published')
                 ->label('Date Published')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
         ];
 
         if ($this->activeTable === 'co_authorship') {
-            $schema[] = TextInput::make('data.contribution_percentage')
+            $schema[] = TrimmedIntegerInput::make('data.contribution_percentage')
                 ->label('% Contribution')
-                ->integer()
                 ->minValue(1)
                 ->maxValue(100)
                 ->required();
         }
 
         $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
+            ->label('Proof Document(s)')
             ->multiple()
             ->reorderable()
             ->required()

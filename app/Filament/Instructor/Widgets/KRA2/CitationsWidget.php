@@ -16,6 +16,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class CitationsWidget extends BaseWidget
 {
@@ -67,7 +69,7 @@ class CitationsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.journal_name')->label('Name of Journal'),
                 Tables\Columns\TextColumn::make('data.citation_count')->label('No. of Citations')->numeric(),
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ],
             default => [],
         };
@@ -113,15 +115,16 @@ class CitationsWidget extends BaseWidget
                 ->columnSpanFull(),
             DatePicker::make('data.date_published')
                 ->label('Date Published')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
             TextInput::make('data.journal_name')
                 ->label('Name of Journal')
                 ->maxLength(150)
                 ->required(),
-            TextInput::make('data.citation_count')
+            TrimmedIntegerInput::make('data.citation_count')
                 ->label('No. of Citations')
-                ->integer()
                 ->minValue(0)
                 ->required(),
             TextInput::make('data.citation_index')
@@ -134,7 +137,7 @@ class CitationsWidget extends BaseWidget
                 ->maxLength(50)
                 ->required(),
             FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
+                ->label('Proof Document(s)')
                 ->multiple()
                 ->reorderable()
                 ->required()

@@ -28,6 +28,7 @@ class Submission extends Model
         'google_drive_file_id',
         'score',
         'status',
+        'raw_score', // Make sure you added this from the migration
     ];
 
     /**

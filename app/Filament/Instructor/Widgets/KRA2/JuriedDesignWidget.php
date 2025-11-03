@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class JuriedDesignWidget extends BaseWidget
 {
@@ -35,7 +36,7 @@ class JuriedDesignWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.reviewer')->label('Reviewer/Evaluator'),
                 Tables\Columns\TextColumn::make('data.date_activity')->label('Activity Date')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -75,6 +76,7 @@ class JuriedDesignWidget extends BaseWidget
                     'engineering' => 'Engineering',
                     'industrial_design' => 'Industrial Design',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.reviewer')
                 ->label('Reviewer, Evaluator or Its Equivalent')
@@ -82,6 +84,8 @@ class JuriedDesignWidget extends BaseWidget
                 ->required(),
             DatePicker::make('data.date_activity')
                 ->label('Activity/Exhibition Date')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
             TextInput::make('data.venue')

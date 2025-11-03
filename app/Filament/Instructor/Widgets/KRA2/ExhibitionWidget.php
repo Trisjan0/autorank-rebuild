@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class ExhibitionWidget extends BaseWidget
 {
@@ -39,7 +40,7 @@ class ExhibitionWidget extends BaseWidget
                     ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.date_exhibited')->label('Exhibition Date')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -80,6 +81,7 @@ class ExhibitionWidget extends BaseWidget
                     'film' => 'Film',
                     'multimedia' => 'Multimedia',
                 ])
+                ->searchable()
                 ->required()
                 ->live()
                 ->afterStateUpdated(fn(callable $set) => $set('data.creative_type', null)),
@@ -108,10 +110,13 @@ class ExhibitionWidget extends BaseWidget
                         default => [],
                     };
                 })
+                ->searchable()
                 ->required()
                 ->visible(fn(Get $get): bool => !empty($get('data.classification'))),
             DatePicker::make('data.date_exhibited')
                 ->label('Exhibition Date')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->maxDate(now())
                 ->required(),
             TextInput::make('data.venue')

@@ -17,6 +17,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Forms\Components\TrimmedIntegerInput;
+use App\Tables\Columns\ScoreColumn;
 
 class NonPatentableInventionsWidget extends BaseWidget
 {
@@ -94,7 +96,7 @@ class NonPatentableInventionsWidget extends BaseWidget
             $columns[] = Tables\Columns\TextColumn::make('data.update_details')->label('Update Details')->wrap()->limit(50);
         }
 
-        $columns[] = Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2);
+        $columns[] = ScoreColumn::make('score');
 
         return $columns;
     }
@@ -136,26 +138,66 @@ class NonPatentableInventionsWidget extends BaseWidget
             $schema = [
                 TextInput::make('data.name')->label('Name of the Software')->maxLength(255)->required()->columnSpanFull(),
                 TextInput::make('data.copyright_no')->label('Copyright No.')->maxLength(100)->required(),
-                DatePicker::make('data.date_copyrighted')->label('Date Copyrighted')->maxDate(now())->required(),
-                DatePicker::make('data.date_utilized')->label('Date Utilized (If applicable)')->maxDate(now()),
+                DatePicker::make('data.date_copyrighted')
+                    ->label('Date Copyrighted')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
+                    ->maxDate(now())
+                    ->required(),
+                DatePicker::make('data.date_utilized')
+                    ->label('Date Utilized (If applicable)')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
+                    ->maxDate(now()),
                 TextInput::make('data.end_user')->label('Name of End User/s')->maxLength(255)->required(),
             ];
             if ($this->activeTable === 'software_new_co') {
-                $schema[] = TextInput::make('data.contribution_percentage')->label('% Contribution')->integer()->minValue(1)->maxValue(100)->required();
+                $schema[] = TrimmedIntegerInput::make('data.contribution_percentage')
+                    ->label('% Contribution')
+                    ->minValue(1)
+                    ->maxValue(100)
+                    ->required();
             } elseif ($this->activeTable === 'software_updated') {
-                $schema[] = Select::make('data.developer_role')->label('Developer Role')->options(['Sole Developer' => 'Sole Developer', 'Co-developer' => 'Co-developer'])->required();
+                $schema[] = Select::make('data.developer_role')
+                    ->label('Developer Role')
+                    ->options(['Sole Developer' => 'Sole Developer', 'Co-developer' => 'Co-developer'])
+                    ->searchable()
+                    ->required();
                 $schema[] = Textarea::make('data.update_details')->label('Specify New Features / Update Details')->required()->columnSpanFull();
             }
         } elseif (Str::startsWith($this->activeTable, 'plant_animal')) {
             $schema = [
                 TextInput::make('data.name')->label('Name of Plant Variety, Animal Breed, or Microbial Strain')->maxLength(255)->required()->columnSpanFull(),
-                Select::make('data.type')->label('Type')->options(['plant' => 'Plant', 'animal' => 'Animal', 'microbe' => 'Microbe'])->required(),
-                DatePicker::make('data.date_completed')->label('Date Completed')->maxDate(now())->required(),
-                DatePicker::make('data.date_registered')->label('Date Registered')->maxDate(now())->required(),
-                DatePicker::make('data.date_propagation')->label('Date of Propagation based on Certification')->maxDate(now())->required(),
+                Select::make('data.type')
+                    ->label('Type')
+                    ->options(['plant' => 'Plant', 'animal' => 'Animal', 'microbe' => 'Microbe'])
+                    ->searchable()
+                    ->required(),
+                DatePicker::make('data.date_completed')
+                    ->label('Date Completed')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
+                    ->maxDate(now())
+                    ->required(),
+                DatePicker::make('data.date_registered')
+                    ->label('Date Registered')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
+                    ->maxDate(now())
+                    ->required(),
+                DatePicker::make('data.date_propagation')
+                    ->label('Date of Propagation based on Certification')
+                    ->native(false)
+                    ->displayFormat('m/d/Y')
+                    ->maxDate(now())
+                    ->required(),
             ];
             if ($this->activeTable === 'plant_animal_co') {
-                $schema[] = TextInput::make('data.contribution_percentage')->label('% Contribution')->integer()->minValue(1)->maxValue(100)->required();
+                $schema[] = TrimmedIntegerInput::make('data.contribution_percentage')
+                    ->label('% Contribution')
+                    ->minValue(1)
+                    ->maxValue(100)
+                    ->required();
             }
         }
 

@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Tables\Columns\ScoreColumn;
 
 class ConferenceTrainingWidget extends BaseWidget
 {
@@ -37,7 +38,7 @@ class ConferenceTrainingWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.organizer')->label('Organizer'),
                 Tables\Columns\TextColumn::make('data.date_activity')->label('Date of Activity')->date(),
-                Tables\Columns\TextColumn::make('score')->label('Score')->numeric(2),
+                ScoreColumn::make('score'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -76,6 +77,7 @@ class ConferenceTrainingWidget extends BaseWidget
                     'local' => 'Local',
                     'international' => 'International',
                 ])
+                ->searchable()
                 ->required(),
             TextInput::make('data.organizer')
                 ->label('Organizer/Sponsoring Body')
@@ -83,6 +85,8 @@ class ConferenceTrainingWidget extends BaseWidget
                 ->maxLength(255),
             DatePicker::make('data.date_activity')
                 ->label('Date of Activity')
+                ->native(false)
+                ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
             FileUpload::make('google_drive_file_id')
