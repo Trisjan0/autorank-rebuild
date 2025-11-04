@@ -19,6 +19,8 @@ class JuriedDesignWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     public function table(Table $table): Table
     {
         return $table

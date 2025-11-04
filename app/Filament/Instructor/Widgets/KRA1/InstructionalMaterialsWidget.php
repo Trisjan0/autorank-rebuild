@@ -25,6 +25,8 @@ class InstructionalMaterialsWidget extends BaseWidget
 {
     protected int|string|array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a1.instructional-materials-widget';
 
     public ?string $activeTable = 'sole_authorship';

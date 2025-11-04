@@ -22,6 +22,8 @@ class QualityOfExtensionWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected function submissionExistsForCurrentType(): bool
     {
         $activeApplicationId = Auth::user()?->activeApplication?->id;

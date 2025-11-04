@@ -23,6 +23,8 @@ class CitationsWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a2.citations-widget';
 
     public ?string $activeTable = 'local_authors';

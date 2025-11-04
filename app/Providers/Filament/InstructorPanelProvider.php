@@ -19,6 +19,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Instructor\Widgets\WelcomeWidget;
 
 class InstructorPanelProvider extends PanelProvider
 {
@@ -35,6 +36,8 @@ class InstructorPanelProvider extends PanelProvider
             ->login(Login::class)
             ->colors($this->getPanelColors())
             ->font('Archivo')
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('10s')
             ->discoverResources(in: app_path('Filament/Instructor/Resources'), for: 'App\\Filament\\Instructor\\Resources')
             ->discoverPages(in: app_path('Filament/Instructor/Pages'), for: 'App\\Filament\\Instructor\\Pages')
             ->pages([
@@ -43,6 +46,7 @@ class InstructorPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Instructor/Widgets'), for: 'App\\Filament\\Instructor\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
+                WelcomeWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

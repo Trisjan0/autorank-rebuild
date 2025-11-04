@@ -37,6 +37,8 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->colors($this->getPanelColors())
             ->font('Archivo')
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('10s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->pages([
                 Pages\Dashboard::class,

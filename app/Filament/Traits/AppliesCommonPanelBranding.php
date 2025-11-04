@@ -11,7 +11,7 @@ trait AppliesCommonPanelBranding
         return $panel
             ->brandLogo(fn() => view('filament.shared.logo'))
             ->renderHook(
-                'panels::user-menu.before',
+                'panels::global-search.after',
                 fn() => view('filament.shared.user-role'),
             );
     }

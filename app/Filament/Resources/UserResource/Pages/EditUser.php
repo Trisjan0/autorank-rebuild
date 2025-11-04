@@ -3,9 +3,13 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
+use App\Models\FacultyRank;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Actions\Action as NotificationAction;
+use Illuminate\Notifications\DatabaseNotification;
 
 class EditUser extends EditRecord
 {
@@ -19,7 +23,7 @@ class EditUser extends EditRecord
     }
 
     /**
-     * Automatically update rank assignment details on change ---
+     * Automatically update rank assignment details on change
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
@@ -40,5 +44,39 @@ class EditUser extends EditRecord
         }
 
         return $data;
+    }
+
+    /**
+     * Send notification to user after rank is successfully saved.
+     */
+    protected function afterSave(): void
+    {
+        $user = $this->getRecord();
+        $adminUser = Auth::user();
+
+        if ($user->wasChanged('faculty_rank_id')) {
+            $newRank = $user->faculty_rank;
+            $newRankName = $newRank ? $newRank->name : 'Unset';
+
+            $notificationToInstructor = Notification::make()
+                ->title('Faculty Rank Updated')
+                ->body("Your rank was changed to '{$newRankName}' by {$adminUser->name}. Please refresh the page to update your view.")
+                ->icon('heroicon-o-academic-cap')
+                ->success();
+
+            $notificationToInstructor->sendToDatabase($user);
+
+            $requestUrl = "/admin/users/{$user->id}/edit";
+
+            $jsonUrl = str_replace('/', '\/', $requestUrl);
+
+            DatabaseNotification::query()
+                ->where('notifiable_type', 'App\Models\User')
+                ->where('notifiable_id', $adminUser->id)
+                ->whereNull('read_at')
+                ->where('data', 'like', '%"title":"Account Activation Request"%')
+                ->where('data', 'like', '%"url":"' . $jsonUrl . '"%')
+                ->update(['read_at' => now()]);
+        }
     }
 }

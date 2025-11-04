@@ -43,12 +43,14 @@ class UserResource extends Resource
             ->schema([
                 TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->disabled(),
                 TextInput::make('email')
                     ->email()
                     ->required()
                     ->unique(ignoreRecord: true)
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->disabled(),
                 TextInput::make('password')
                     ->password()
                     ->dehydrateStateUsing(fn(string $state): string => Hash::make($state))
@@ -101,6 +103,7 @@ class UserResource extends Resource
                     ->label('Faculty Rank')
                     ->searchable()
                     ->sortable()
+                    ->badge()
                     ->default('Unset'),
                 TextColumn::make('rank_assigned_at')
                     ->sortable()

@@ -12,15 +12,17 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class ScoreCapSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
-    protected static ?string $navigationGroup = 'Settings';
+    protected static ?string $navigationGroup = 'System Management';
     protected static ?string $navigationLabel = 'Score Caps';
-    protected static ?string $title = 'Score Cap Settings';
+    protected static ?string $title = 'Manage Score Caps';
 
     protected static string $view = 'filament.admin.pages.score-cap-settings';
 
@@ -252,5 +254,19 @@ class ScoreCapSettings extends Page implements HasForms
             ->title('Score caps have been reset to default')
             ->success()
             ->send();
+    }
+
+    /**
+     * Control who can access this settings page.
+     */
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->hasRole(['Admin', 'Super Admin']);
     }
 }

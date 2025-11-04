@@ -24,6 +24,8 @@ class NonPatentableInventionsWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a2.non-patentable-inventions-widget';
 
     public ?string $activeTable = 'software_new_sole';

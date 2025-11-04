@@ -23,6 +23,8 @@ class TeachingEffectivenessWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a1.teaching-effectiveness-widget';
 
     public ?string $activeTable = 'student_evaluation';

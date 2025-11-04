@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             KraWeightSeeder::class,
             ScoreCapsSeeder::class,
+            PromotionCycleSeeder::class,
         ]);
     }
 }

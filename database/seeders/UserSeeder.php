@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
         // Create Roles
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
-        $evaluatorRole = Role::firstOrCreate(['name' => 'Evaluator', 'guard_name' => 'web']);
+        $validatorRole = Role::firstOrCreate(['name' => 'Validator', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'Instructor', 'guard_name' => 'web']);
 
         $superAdminEmail = env('DEFAULT_SUPER_ADMIN_EMAIL', 'superadmin@autorank.com');
@@ -24,8 +24,8 @@ class UserSeeder extends Seeder
         $adminEmail = env('DEFAULT_ADMIN_EMAIL', 'admin@autorank.com');
         $adminPassword = env('DEFAULT_ADMIN_PASSWORD', 'password');
 
-        $evaluatorEmail = env('DEFAULT_EVALUATOR_EMAIL', 'evaluator@autorank.com');
-        $evaluatorPassword = env('DEFAULT_EVALUATOR_PASSWORD', 'password');
+        $validatorEmail = env('DEFAULT_VALIDATOR_EMAIL', 'validator@autorank.com');
+        $validatorPassword = env('DEFAULT_VALIDATOR_PASSWORD', 'password');
 
         // Create Super Admin 
         $superAdmin = User::firstOrCreate(
@@ -47,15 +47,15 @@ class UserSeeder extends Seeder
         );
         $admin->assignRole($adminRole);
 
-        // Create Evaluator
-        $evaluator = User::firstOrCreate(
-            ['email' => $evaluatorEmail],
+        // Create Validator
+        $validator = User::firstOrCreate(
+            ['email' => $validatorEmail],
             [
-                'name' => 'Evaluator',
-                'password' => Hash::make($evaluatorPassword),
+                'name' => 'Validator',
+                'password' => Hash::make($validatorPassword),
             ]
         );
-        $evaluator->assignRole($evaluatorRole);
+        $validator->assignRole($validatorRole);
 
         $allPermissions = Permission::all();
         $superAdminRole->syncPermissions($allPermissions);

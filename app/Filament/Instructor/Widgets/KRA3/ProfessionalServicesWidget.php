@@ -25,6 +25,8 @@ class ProfessionalServicesWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a3.professional-services-widget';
 
     public ?string $activeTable = 'accreditation_services';

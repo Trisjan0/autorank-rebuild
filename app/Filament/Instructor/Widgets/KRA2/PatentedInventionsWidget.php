@@ -24,6 +24,8 @@ class PatentedInventionsWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a2.patented-inventions-widget';
 
     public ?string $activeTable = 'invention_patent_sole';

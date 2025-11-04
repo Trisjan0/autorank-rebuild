@@ -24,6 +24,8 @@ class EducationalQualificationsWidget extends BaseWidget
 {
     protected int | string | array $columnSpan = 'full';
 
+    protected static bool $isDiscovered = false;
+
     protected static string $view = 'filament.instructor.widgets.k-r-a4.educational-qualifications-widget';
 
     public ?string $activeTable = 'doctorate_degree';
