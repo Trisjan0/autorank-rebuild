@@ -13,15 +13,15 @@ use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Filament\Forms\Get;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
 
-class InstructionalMaterialsWidget extends BaseWidget
+class InstructionalMaterialsWidget extends BaseKRAWidget
 {
     protected int|string|array $columnSpan = 'full';
 
@@ -36,6 +36,21 @@ class InstructionalMaterialsWidget extends BaseWidget
         $this->resetTable();
     }
 
+    protected function getKACategory(): string
+    {
+        return 'KRA I';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        $typeMap = [
+            'sole_authorship' => 'im-sole-authorship',
+            'co_authorship' => 'im-co-authorship',
+            'academic_program' => 'im-academic-program',
+        ];
+        return $typeMap[$this->activeTable] ?? 'im-sole-authorship';
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -43,20 +58,18 @@ class InstructionalMaterialsWidget extends BaseWidget
             ->heading(fn(): ?string => $this->getTableHeading())
             ->columns($this->getTableColumns())
             ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
+            ->actions($this->getTableActions())
+            ->checkIfRecordIsSelectableUsing(
+                fn(Submission $record): bool => !$this->submissionExistsForCurrentType() || $record->id === $this->getCurrentSubmissionId()
+            );
     }
 
     protected function getTableQuery(): Builder
     {
-        $typeMap = [
-            'sole_authorship' => 'im-sole-authorship',
-            'co_authorship' => 'im-co-authorship',
-            'academic_program' => 'im-academic-program',
-        ];
-
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $typeMap[$this->activeTable] ?? 'im-sole-authorship');
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getTableHeading(): ?string
@@ -77,10 +90,8 @@ class InstructionalMaterialsWidget extends BaseWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
                 Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
-
                 ScoreColumn::make('score'),
             ],
-
             'co_authorship' => [
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
                 Tables\Columns\TextColumn::make('data.material_type')
@@ -90,19 +101,15 @@ class InstructionalMaterialsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
                 Tables\Columns\TextColumn::make('data.date_approved')->label('Date Approved')->date(),
                 Tables\Columns\TextColumn::make('data.contribution_percentage')->label('% Contribution')->suffix('%'),
-
                 ScoreColumn::make('score'),
             ],
-
             'academic_program' => [
                 Tables\Columns\TextColumn::make('data.program_name')->label('Name of Program')->wrap(),
                 Tables\Columns\TextColumn::make('data.program_type')->label('Type of Program')->badge(),
                 Tables\Columns\TextColumn::make('data.role')->label('Role'),
                 Tables\Columns\TextColumn::make('data.academic_year_implemented')->label('AY Implemented'),
-
                 ScoreColumn::make('score'),
             ],
-
             default => [],
         };
     }
@@ -115,20 +122,15 @@ class InstructionalMaterialsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                    $data['category'] = 'KRA I';
-
-                    $typeMap = [
-                        'sole_authorship' => 'im-sole-authorship',
-                        'co_authorship' => 'im-co-authorship',
-                        'academic_program' => 'im-academic-program',
-                    ];
-
-                    $data['type'] = $typeMap[$this->activeTable] ?? 'im-sole-authorship';
+                    $data['application_id'] = $this->selectedApplicationId;
+                    $data['category'] = $this->getKACategory();
+                    $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading(fn() => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
-                ->modalWidth('3xl'),
+                ->modalWidth('3xl')
+                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                ->after(fn() => $this->mount()),
         ];
     }
 
@@ -138,8 +140,11 @@ class InstructionalMaterialsWidget extends BaseWidget
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn() => 'Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
-                ->modalWidth('3xl'),
-            DeleteAction::make(),
+                ->modalWidth('3xl')
+                ->visible($this->getActionVisibility()),
+            DeleteAction::make()
+                ->after(fn() => $this->mount())
+                ->visible($this->getActionVisibility()),
         ];
     }
 
@@ -210,7 +215,6 @@ class InstructionalMaterialsWidget extends BaseWidget
                         ->maxLength(150)
                         ->required()
                         ->columnSpanFull(),
-
                     Select::make('data.program_type')
                         ->label('Type of Program')
                         ->options([
@@ -219,18 +223,15 @@ class InstructionalMaterialsWidget extends BaseWidget
                         ])
                         ->searchable()
                         ->required(),
-
                     TextInput::make('data.board_approval')
                         ->label('Board Approval (Board Resolution No.)')
                         ->maxLength(150)
                         ->required(),
-
                     Select::make('data.academic_year_implemented')
                         ->label('Academic Year Implemented')
                         ->options($academicYears)
                         ->rule('in:' . implode(',', array_keys($academicYears)))
                         ->required(),
-
                     Select::make('data.role')
                         ->label('Role')
                         ->options([

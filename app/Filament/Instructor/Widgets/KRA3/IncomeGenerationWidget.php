@@ -10,27 +10,36 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 use Filament\Forms\Get;
 
-class IncomeGenerationWidget extends BaseWidget
+class IncomeGenerationWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
+    protected static string $view = 'filament.instructor.widgets.k-r-a3.income-generation-widget';
+
+    protected function getKACategory(): string
+    {
+        return 'KRA III';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return 'extension-income-generation';
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Submission::query()
-                    ->where('user_id', Auth::id())
-                    ->where('type', 'extension-income-generation')
-            )
+            ->query(fn(): Builder => $this->getTableQuery())
             ->heading('Contribution to Income Generation Submissions')
             ->columns([
                 Tables\Columns\TextColumn::make('data.name')->label('Name of Product/Project')->wrap(),
@@ -50,21 +59,33 @@ class IncomeGenerationWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                        $data['category'] = 'KRA III';
-                        $data['type'] = 'extension-income-generation';
+                        $data['application_id'] = $this->selectedApplicationId;
+                        $data['category'] = $this->getKACategory();
+                        $data['type'] = $this->getActiveSubmissionType();
                         return $data;
                     })
                     ->modalHeading('Submit New Income Generation Contribution')
-                    ->modalWidth('3xl'),
+                    ->modalWidth('3xl')
+                    ->after(fn() => $this->mount()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Income Generation Contribution')
-                    ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalWidth('3xl')
+                    ->visible($this->getActionVisibility()),
+                Tables\Actions\DeleteAction::make()
+                    ->after(fn() => $this->mount())
+                    ->visible($this->getActionVisibility()),
             ]);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getFormSchema(): array

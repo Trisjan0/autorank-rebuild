@@ -14,13 +14,13 @@ use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 
-class EducationalQualificationsWidget extends BaseWidget
+class EducationalQualificationsWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
@@ -35,25 +35,9 @@ class EducationalQualificationsWidget extends BaseWidget
         $this->resetTable();
     }
 
-    public function table(Table $table): Table
+    protected function getKACategory(): string
     {
-        return $table
-            ->query(fn(): Builder => $this->getTableQuery())
-            ->heading(fn(): string => $this->getTableHeading())
-            ->columns($this->getTableColumns())
-            ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
-    }
-
-    protected function getTableQuery(): Builder
-    {
-        $type = $this->getActiveSubmissionType();
-
-        return Submission::query()
-            ->where('user_id', Auth::id())
-            ->where('category', 'KRA IV')
-            ->where('type', $type)
-            ->where('application_id', Auth::user()?->activeApplication?->id ?? null);
+        return 'KRA IV';
     }
 
     protected function getActiveSubmissionType(): string
@@ -61,6 +45,28 @@ class EducationalQualificationsWidget extends BaseWidget
         return $this->activeTable === 'doctorate_degree'
             ? 'profdev-doctorate'
             : 'profdev-additional-degree';
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn(): Builder => $this->getTableQuery())
+            ->heading(fn(): string => $this->getTableHeading())
+            ->columns($this->getTableColumns())
+            ->headerActions($this->getTableHeaderActions())
+            ->actions($this->getTableActions())
+            ->checkIfRecordIsSelectableUsing(
+                fn(Submission $record): bool => !$this->submissionExistsForCurrentType() || $record->id === $this->getCurrentSubmissionId()
+            );
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('category', $this->getKACategory())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getTableHeading(): string
@@ -104,13 +110,15 @@ class EducationalQualificationsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                    $data['category'] = 'KRA IV';
+                    $data['application_id'] = $this->selectedApplicationId;
+                    $data['category'] = $this->getKACategory();
                     $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Submit Doctorate Degree' : 'Submit Additional Qualification')
-                ->modalWidth('3xl'),
+                ->modalWidth('3xl')
+                ->hidden(fn(): bool => $this->activeTable === 'doctorate_degree' && $this->submissionExistsForCurrentType())
+                ->after(fn() => $this->mount()),
         ];
     }
 
@@ -120,8 +128,11 @@ class EducationalQualificationsWidget extends BaseWidget
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Edit Doctorate Degree' : 'Edit Additional Qualification')
-                ->modalWidth('3xl'),
-            DeleteAction::make(),
+                ->modalWidth('3xl')
+                ->visible($this->getActionVisibility()),
+            DeleteAction::make()
+                ->after(fn() => $this->mount())
+                ->visible($this->getActionVisibility()),
         ];
     }
 

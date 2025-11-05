@@ -55,12 +55,9 @@ class EditUser extends EditRecord
         $adminUser = Auth::user();
 
         if ($user->wasChanged('faculty_rank_id')) {
-            $newRank = $user->faculty_rank;
-            $newRankName = $newRank ? $newRank->name : 'Unset';
-
             $notificationToInstructor = Notification::make()
                 ->title('Faculty Rank Updated')
-                ->body("Your rank was changed to '{$newRankName}' by {$adminUser->name}. Please refresh the page to update your view.")
+                ->body("Your rank was changed by {$adminUser->name}. Please refresh the page to update your view.")
                 ->icon('heroicon-o-academic-cap')
                 ->success();
 

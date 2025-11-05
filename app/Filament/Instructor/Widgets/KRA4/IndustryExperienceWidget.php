@@ -11,29 +11,39 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Tables;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 
-class IndustryExperienceWidget extends BaseWidget
+class IndustryExperienceWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
+    protected static string $view = 'filament.instructor.widgets.k-r-a4.industry-experience-widget';
+
+    protected function getKACategory(): string
+    {
+        return 'KRA IV';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return 'profdev-industry-experience';
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Submission::query()
-                    ->where('user_id', Auth::id())
-                    ->where('category', 'KRA IV')
-                    ->where('type', 'profdev-industry-experience')
-                    ->where('application_id', Auth::user()?->activeApplication?->id ?? null)
-            )
+            ->query(fn(): Builder => $this->getTableQuery())
             ->heading('Industry Experience (Non-Academic)')
             ->columns([
                 Tables\Columns\TextColumn::make('data.org_name')->label('Company/Organization')->wrap(),
@@ -52,21 +62,34 @@ class IndustryExperienceWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                        $data['category'] = 'KRA IV';
-                        $data['type'] = 'profdev-industry-experience';
+                        $data['application_id'] = $this->selectedApplicationId;
+                        $data['category'] = $this->getKACategory();
+                        $data['type'] = $this->getActiveSubmissionType();
                         return $data;
                     })
                     ->modalHeading('Submit Industry Experience Record')
-                    ->modalWidth('3xl'),
+                    ->modalWidth('3xl')
+                    ->after(fn() => $this->mount()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Industry Experience Record')
-                    ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalWidth('3xl')
+                    ->visible($this->getActionVisibility()),
+                Tables\Actions\DeleteAction::make()
+                    ->after(fn() => $this->mount())
+                    ->visible($this->getActionVisibility()),
             ]);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('category', $this->getKACategory())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
 

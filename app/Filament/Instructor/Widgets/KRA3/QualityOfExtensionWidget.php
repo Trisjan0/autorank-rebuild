@@ -11,56 +11,37 @@ use Filament\Forms\Get;
 use Filament\Tables;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 
-class QualityOfExtensionWidget extends BaseWidget
+class QualityOfExtensionWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
-    protected function submissionExistsForCurrentType(): bool
-    {
-        $activeApplicationId = Auth::user()?->activeApplication?->id;
-        if (!$activeApplicationId) {
-            return false;  // temporarily allow no application id submission
-        }
+    protected static string $view = 'filament.instructor.widgets.k-r-a3.quality-of-extension-widget';
 
-        return Submission::where('user_id', Auth::id())
-            ->where('application_id', $activeApplicationId)
-            ->where('type', 'extension-quality-rating')
-            ->exists();
+    protected function getKACategory(): string
+    {
+        return 'KRA III';
     }
 
-    protected function getCurrentSubmissionId(): ?int
+    protected function getActiveSubmissionType(): string
     {
-        $activeApplicationId = Auth::user()?->activeApplication?->id;
-        if (!$activeApplicationId) {
-            return null;
-        }
-
-        return Submission::where('user_id', Auth::id())
-            ->where('application_id', $activeApplicationId)
-            ->where('type', 'extension-quality-rating')
-            ->value('id');
+        return 'extension-quality-rating';
     }
-
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Submission::query()
-                    ->where('user_id', Auth::id())
-                    ->where('category', 'KRA III')
-                    ->where('type', 'extension-quality-rating')
-                    ->where('application_id', Auth::user()?->activeApplication?->id ?? null)
-            )
+            ->query(fn(): Builder => $this->getTableQuery())
             ->heading('Client Satisfaction Rating Submission')
             ->columns([
                 Tables\Columns\TextColumn::make('updated_at')
@@ -116,22 +97,36 @@ class QualityOfExtensionWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                        $data['category'] = 'KRA III';
-                        $data['type'] = 'extension-quality-rating';
+                        $data['application_id'] = $this->selectedApplicationId;
+                        $data['category'] = $this->getKACategory();
+                        $data['type'] = $this->getActiveSubmissionType();
                         return $data;
                     })
                     ->modalHeading('Submit Client Satisfaction Ratings')
                     ->modalWidth('4xl')
-                    ->hidden(fn(): bool => $this->submissionExistsForCurrentType()),
+                    ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                    ->after(fn() => $this->mount()),
             ])
             ->actions([
                 EditAction::make()
                     ->label('Edit Rating Data')
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Client Satisfaction Ratings')
-                    ->modalWidth('4xl'),
+                    ->modalWidth('4xl')
+                    ->visible($this->getActionVisibility()),
+                DeleteAction::make()
+                    ->after(fn() => $this->mount())
+                    ->visible($this->getActionVisibility()),
             ]);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('category', $this->getKACategory())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     private function getRatingFields(): array

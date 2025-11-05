@@ -12,14 +12,14 @@ use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 
-class CitationsWidget extends BaseWidget
+class CitationsWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
@@ -34,14 +34,9 @@ class CitationsWidget extends BaseWidget
         $this->resetTable();
     }
 
-    public function table(Table $table): Table
+    protected function getKACategory(): string
     {
-        return $table
-            ->query(fn(): Builder => $this->getTableQuery())
-            ->heading(fn(): string => $this->getTableHeading())
-            ->columns($this->getTableColumns())
-            ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
+        return 'KRA II';
     }
 
     protected function getActiveSubmissionType(): string
@@ -51,11 +46,25 @@ class CitationsWidget extends BaseWidget
             : 'research-citation-international';
     }
 
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn(): Builder => $this->getTableQuery())
+            ->heading(fn(): string => $this->getTableHeading())
+            ->columns($this->getTableColumns())
+            ->headerActions($this->getTableHeaderActions())
+            ->actions($this->getTableActions())
+            ->checkIfRecordIsSelectableUsing(
+                fn(Submission $record): bool => !$this->submissionExistsForCurrentType() || $record->id === $this->getCurrentSubmissionId()
+            );
+    }
+
     protected function getTableQuery(): Builder
     {
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $this->getActiveSubmissionType());
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getTableHeading(): string
@@ -85,14 +94,15 @@ class CitationsWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                    $data['category'] = 'KRA II';
+                    $data['application_id'] = $this->selectedApplicationId;
+                    $data['category'] = $this->getKACategory();
                     $data['type'] = $this->getActiveSubmissionType();
-
                     return $data;
                 })
                 ->modalHeading(fn(): string => 'Submit New Citation (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')
-                ->modalWidth('3xl'),
+                ->modalWidth('3xl')
+                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                ->after(fn() => $this->mount()),
         ];
     }
 
@@ -102,8 +112,11 @@ class CitationsWidget extends BaseWidget
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => 'Edit Citation (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')
-                ->modalWidth('3xl'),
-            DeleteAction::make(),
+                ->modalWidth('3xl')
+                ->visible($this->getActionVisibility()),
+            DeleteAction::make()
+                ->after(fn() => $this->mount())
+                ->visible($this->getActionVisibility()),
         ];
     }
 

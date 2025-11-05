@@ -12,14 +12,14 @@ use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
 
-class MentorshipServicesWidget extends BaseWidget
+class MentorshipServicesWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
@@ -34,6 +34,21 @@ class MentorshipServicesWidget extends BaseWidget
         $this->resetTable();
     }
 
+    protected function getKACategory(): string
+    {
+        return 'KRA I';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        $typeMap = [
+            'adviser' => 'mentorship-adviser',
+            'panel' => 'mentorship-panel',
+            'mentor' => 'mentorship-mentor',
+        ];
+        return $typeMap[$this->activeTable] ?? 'mentorship-adviser';
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -41,21 +56,18 @@ class MentorshipServicesWidget extends BaseWidget
             ->heading(fn(): string => $this->getTableHeading())
             ->columns($this->getTableColumns())
             ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
+            ->actions($this->getTableActions())
+            ->checkIfRecordIsSelectableUsing(
+                fn(Submission $record): bool => !$this->submissionExistsForCurrentType() || $record->id === $this->getCurrentSubmissionId()
+            );
     }
 
     protected function getTableQuery(): Builder
     {
-        $typeMap = [
-            'adviser' => 'mentorship-adviser',
-            'panel' => 'mentorship-panel',
-            'mentor' => 'mentorship-mentor',
-        ];
-        $type = $typeMap[$this->activeTable] ?? 'mentorship-adviser';
-
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $type);
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getTableHeading(): string
@@ -63,9 +75,6 @@ class MentorshipServicesWidget extends BaseWidget
         return Str::of($this->activeTable)->replace('_', ' ')->title() . ' Submissions';
     }
 
-    /**
-     * Helper function to get dynamic Academic Year labels for the table.
-     */
     private function getTableAcademicYearColumns(): array
     {
         $currentYear = (int) date('Y');
@@ -114,20 +123,15 @@ class MentorshipServicesWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                    $data['category'] = 'KRA I';
-
-                    $typeMap = [
-                        'adviser' => 'mentorship-adviser',
-                        'panel' => 'mentorship-panel',
-                        'mentor' => 'mentorship-mentor',
-                    ];
-                    $data['type'] = $typeMap[$this->activeTable] ?? 'mentorship-adviser';
-
+                    $data['application_id'] = $this->selectedApplicationId;
+                    $data['category'] = $this->getKACategory();
+                    $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
-                ->modalWidth('3xl'),
+                ->modalWidth('3xl')
+                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                ->after(fn() => $this->mount()),
         ];
     }
 
@@ -137,14 +141,14 @@ class MentorshipServicesWidget extends BaseWidget
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => 'Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
-                ->modalWidth('3xl'),
-            DeleteAction::make(),
+                ->modalWidth('3xl')
+                ->visible($this->getActionVisibility()),
+            DeleteAction::make()
+                ->after(fn() => $this->mount())
+                ->visible($this->getActionVisibility()),
         ];
     }
 
-    /**
-     * Helper function to get dynamic Academic Year fields for the form.
-     */
     private function getAcademicYearFields(): array
     {
         $labelPrefix = $this->activeTable === 'adviser' ? 'No. of Student Advisees' : 'No. of Times as Panel';

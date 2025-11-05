@@ -14,14 +14,14 @@ use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 
-class PublishedPapersWidget extends BaseWidget
+class PublishedPapersWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
@@ -36,6 +36,18 @@ class PublishedPapersWidget extends BaseWidget
         $this->resetTable();
     }
 
+    protected function getKACategory(): string
+    {
+        return 'KRA II';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return $this->activeTable === 'sole_authorship'
+            ? 'research-sole-authorship'
+            : 'research-co-authorship';
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -43,16 +55,18 @@ class PublishedPapersWidget extends BaseWidget
             ->heading(fn(): string => $this->getTableHeading())
             ->columns($this->getTableColumns())
             ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
+            ->actions($this->getTableActions())
+            ->checkIfRecordIsSelectableUsing(
+                fn(Submission $record): bool => !$this->submissionExistsForCurrentType() || $record->id === $this->getCurrentSubmissionId()
+            );
     }
 
     protected function getTableQuery(): Builder
     {
-        $type = $this->activeTable === 'sole_authorship' ? 'research-sole-authorship' : 'research-co-authorship';
-
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $type);
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getTableHeading(): string
@@ -100,18 +114,17 @@ class PublishedPapersWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                    $data['category'] = 'KRA II';
-                    $data['type'] = $this->activeTable === 'sole_authorship'
-                        ? 'research-sole-authorship'
-                        : 'research-co-authorship';
-
+                    $data['application_id'] = $this->selectedApplicationId;
+                    $data['category'] = $this->getKACategory();
+                    $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading(fn(): string => $this->activeTable === 'sole_authorship'
                     ? 'Submit New Research Output (Sole Authorship)'
                     : 'Submit New Research Output (Co-Authorship)')
-                ->modalWidth('3xl'),
+                ->modalWidth('3xl')
+                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                ->after(fn() => $this->mount()),
         ];
     }
 
@@ -123,8 +136,11 @@ class PublishedPapersWidget extends BaseWidget
                 ->modalHeading(fn(): string => $this->activeTable === 'sole_authorship'
                     ? 'Edit Research Output (Sole Authorship)'
                     : 'Edit Research Output (Co-Authorship)')
-                ->modalWidth('3xl'),
-            DeleteAction::make(),
+                ->modalWidth('3xl')
+                ->visible($this->getActionVisibility()),
+            DeleteAction::make()
+                ->after(fn() => $this->mount())
+                ->visible($this->getActionVisibility()),
         ];
     }
 

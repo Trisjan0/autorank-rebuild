@@ -10,25 +10,34 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 
-class LiteraryPublicationWidget extends BaseWidget
+class LiteraryPublicationWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
+    protected static string $view = 'filament.instructor.widgets.k-r-a2.literary-publication-widget';
+
+    protected function getKACategory(): string
+    {
+        return 'KRA II';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return 'creative-literary-publication';
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Submission::query()
-                    ->where('user_id', Auth::id())
-                    ->where('type', 'creative-literary-publication')
-            )
+            ->query(fn(): Builder => $this->getTableQuery())
             ->heading('Literary Publication Submissions')
             ->columns([
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
@@ -46,21 +55,33 @@ class LiteraryPublicationWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                        $data['category'] = 'KRA II';
-                        $data['type'] = 'creative-literary-publication';
+                        $data['application_id'] = $this->selectedApplicationId;
+                        $data['category'] = $this->getKACategory();
+                        $data['type'] = $this->getActiveSubmissionType();
                         return $data;
                     })
                     ->modalHeading('Submit New Literary Publication')
-                    ->modalWidth('3xl'),
+                    ->modalWidth('3xl')
+                    ->after(fn() => $this->mount()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Literary Publication')
-                    ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalWidth('3xl')
+                    ->visible($this->getActionVisibility()),
+                Tables\Actions\DeleteAction::make()
+                    ->after(fn() => $this->mount())
+                    ->visible($this->getActionVisibility()),
             ]);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getFormSchema(): array

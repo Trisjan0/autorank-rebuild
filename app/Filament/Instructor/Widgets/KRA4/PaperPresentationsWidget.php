@@ -9,28 +9,38 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 
-class PaperPresentationsWidget extends BaseWidget
+class PaperPresentationsWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
+    protected static string $view = 'filament.instructor.widgets.k-r-a4.paper-presentations-widget';
+
+    protected function getKACategory(): string
+    {
+        return 'KRA IV';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return 'profdev-paper-presentation';
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Submission::query()
-                    ->where('user_id', Auth::id())
-                    ->where('category', 'KRA IV')
-                    ->where('type', 'profdev-paper-presentation')
-                    ->where('application_id', Auth::user()?->activeApplication?->id ?? null)
-            )
+            ->query(fn(): Builder => $this->getTableQuery())
             ->heading('Paper Presentation Submissions')
             ->columns([
                 Tables\Columns\TextColumn::make('data.title')->label('Title of Paper')->wrap(),
@@ -48,21 +58,34 @@ class PaperPresentationsWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                        $data['category'] = 'KRA IV';
-                        $data['type'] = 'profdev-paper-presentation';
+                        $data['application_id'] = $this->selectedApplicationId;
+                        $data['category'] = $this->getKACategory();
+                        $data['type'] = $this->getActiveSubmissionType();
                         return $data;
                     })
                     ->modalHeading('Submit New Paper Presentation')
-                    ->modalWidth('3xl'),
+                    ->modalWidth('3xl')
+                    ->after(fn() => $this->mount()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Paper Presentation')
-                    ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalWidth('3xl')
+                    ->visible($this->getActionVisibility()),
+                Tables\Actions\DeleteAction::make()
+                    ->after(fn() => $this->mount())
+                    ->visible($this->getActionVisibility()),
             ]);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('category', $this->getKACategory())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getFormSchema(): array

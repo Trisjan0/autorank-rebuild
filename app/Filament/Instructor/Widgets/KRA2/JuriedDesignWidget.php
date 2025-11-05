@@ -10,25 +10,34 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 
-class JuriedDesignWidget extends BaseWidget
+class JuriedDesignWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
+    protected static string $view = 'filament.instructor.widgets.k-r-a2.juried-design-widget';
+
+    protected function getKACategory(): string
+    {
+        return 'KRA II';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return 'creative-juried-design';
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Submission::query()
-                    ->where('user_id', Auth::id())
-                    ->where('type', 'creative-juried-design')
-            )
+            ->query(fn(): Builder => $this->getTableQuery())
             ->heading('Juried Design Submissions')
             ->columns([
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
@@ -46,21 +55,33 @@ class JuriedDesignWidget extends BaseWidget
                     ->form($this->getFormSchema())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['user_id'] = Auth::id();
-                        $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                        $data['category'] = 'KRA II';
-                        $data['type'] = 'creative-juried-design';
+                        $data['application_id'] = $this->selectedApplicationId;
+                        $data['category'] = $this->getKACategory();
+                        $data['type'] = $this->getActiveSubmissionType();
                         return $data;
                     })
                     ->modalHeading('Submit New Juried Design')
-                    ->modalWidth('3xl'),
+                    ->modalWidth('3xl')
+                    ->after(fn() => $this->mount()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Juried Design')
-                    ->modalWidth('3xl'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalWidth('3xl')
+                    ->visible($this->getActionVisibility()),
+                Tables\Actions\DeleteAction::make()
+                    ->after(fn() => $this->mount())
+                    ->visible($this->getActionVisibility()),
             ]);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Submission::query()
+            ->where('user_id', Auth::id())
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getFormSchema(): array

@@ -327,7 +327,7 @@ class CreateApplication extends CreateRecord
 
         $data['user_id'] = $user->id;
         $data['applicant_current_rank'] = $user->facultyRank?->name ?? 'N/A';
-        $data['status'] = 'Pending Evaluation';
+        $data['status'] = 'draft';
 
         return $data;
     }

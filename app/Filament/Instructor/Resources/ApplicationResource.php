@@ -22,6 +22,10 @@ use App\Models\PromotionCycle;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ApplicationResource extends Resource
 {
@@ -52,6 +56,137 @@ class ApplicationResource extends Resource
                     ->disabled(),
             ]);
     }
+
+    /**
+     * Define the Infolist for the ViewApplication page.
+     */
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make('Application Details')
+                    ->columns(3)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('evaluation_cycle')
+                            ->label('Promotion Cycle'),
+                        Infolists\Components\TextEntry::make('status')
+                            ->badge()
+                            ->color(fn(string $state): string => match ($state) {
+                                'draft' => 'gray',
+                                'Pending Validation' => 'warning',
+                                'validated' => 'success',
+                                'rejected' => 'danger',
+                                default => 'primary',
+                            }),
+                        Infolists\Components\TextEntry::make('final_score')
+                            ->label('Final Score')
+                            ->placeholder('Not yet scored.'),
+                        Infolists\Components\TextEntry::make('highest_attainable_rank')
+                            ->label('Result')
+                            ->badge()
+                            ->placeholder('Not yet validated.'),
+                        Infolists\Components\TextEntry::make('applicant_current_rank')
+                            ->label('Rank at Time of Submission'),
+                        Infolists\Components\TextEntry::make('created_at')
+                            ->label('Submitted')
+                            ->dateTime('M j, Y g:ia'),
+                        Infolists\Components\TextEntry::make('remarks')
+                            ->label('Evaluator Remarks')
+                            ->columnSpanFull()
+                            ->placeholder('No remarks yet.'),
+                    ]),
+
+                // Helper function to create a repeatable entry for submissions
+                $fn = function (string $kraLabel, array $submissionTypes) use ($infolist) {
+                    return Infolists\Components\Section::make($kraLabel)
+                        ->collapsible()
+                        ->schema([
+                            Infolists\Components\RepeatableEntry::make('submissions')
+                                ->label(false)
+                                ->hidden(fn(Application $record) => $record->submissions->whereIn('type', $submissionTypes)->isEmpty())
+                                ->record($infolist->getRecord()->submissions->whereIn('type', $submissionTypes))
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('id')
+                                        ->label(false)
+                                        ->formatStateUsing(function ($state, $record) {
+                                            $title = $record->data['title'] ?? $record->data['name'] ?? $record->data['activity_title'] ?? 'Untitled';
+                                            $type = Str::of($record->type)->replace('-', ' ')->title();
+                                            return new HtmlString("<div>{$title}</div><div class='text-xs text-gray-500'>{$type}</div>");
+                                        }),
+                                ]),
+                            Infolists\Components\TextEntry::make($kraLabel . '_empty')
+                                ->label(false)
+                                ->value('No submissions for this KRA.')
+                                ->color('gray')
+                                ->hidden(fn(Application $record) => $record->submissions->whereIn('type', $submissionTypes)->isNotEmpty())
+                        ]);
+                },
+
+                // KRA I
+                $fn('KRA I: Instruction', [
+                    'te-student-evaluation',
+                    'te-supervisor-evaluation',
+                    'im-sole-authorship',
+                    'im-co-authorship',
+                    'im-academic-program',
+                    'mentorship-adviser',
+                    'mentorship-panel',
+                    'mentorship-mentor'
+                ]),
+
+                // KRA II
+                $fn('KRA II: Research & Innovation', [
+                    'research-sole-authorship',
+                    'research-co-authorship',
+                    'research-translated-lead',
+                    'research-translated-contributor',
+                    'research-citation-local',
+                    'research-citation-international',
+                    'invention-patent-sole',
+                    'invention-patent-co-inventor',
+                    'invention-utility-design-sole',
+                    'invention-utility-design-co-inventor',
+                    'invention-commercialized-local',
+                    'invention-commercialized-international',
+                    'invention-software-new-sole',
+                    'invention-software-new-co',
+                    'invention-software-updated',
+                    'invention-plant-animal-sole',
+                    'invention-plant-animal-co',
+                    'creative-performing-art',
+                    'creative-exhibition',
+                    'creative-juried-design',
+                    'creative-literary-publication'
+                ]),
+
+                // KRA III
+                $fn('KRA III: Extension', [
+                    'extension-linkage',
+                    'extension-income-generation',
+                    'accreditation_services',
+                    'judge_examiner',
+                    'consultant',
+                    'media_service',
+                    'training_resource_person',
+                    'social_responsibility',
+                    'extension-quality-rating',
+                    'extension-bonus-designation'
+                ]),
+
+                // KRA IV
+                $fn('KRA IV: Professional Development', [
+                    'profdev-organization',
+                    'profdev-doctorate',
+                    'profdev-additional-degree',
+                    'profdev-conference-training',
+                    'profdev-paper-presentation',
+                    'profdev-award-recognition',
+                    'profdev-academic-service',
+                    'profdev-industry-experience'
+                ]),
+            ]);
+    }
+
 
     public static function table(Table $table): Table
     {
@@ -105,7 +240,7 @@ class ApplicationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // could make a submissionRelationManager
         ];
     }
 

@@ -1,23 +1,26 @@
 <x-filament-widgets::widget>
-    <x-filament::section>
-        <x-slot name="heading">
-            <x-filament::tabs wire:model.live="activeTable">
-                <x-filament::tabs.item
-                    wire:click="$set('activeTable', 'student_evaluation')"
-                    :active="$activeTable === 'student_evaluation'"
-                    icon="heroicon-o-academic-cap">
-                    Student Evaluation
-                </x-filament::tabs.item>
+    <x-filament::card>
+        
+        @include('filament.instructor.widgets.partials.kra-widget-header')
 
-                <x-filament::tabs.item
-                    wire:click="$set('activeTable', 'supervisor_evaluation')"
-                    :active="$activeTable === 'supervisor_evaluation'"
-                    icon="heroicon-o-clipboard-document-check">
-                    Supervisor Evaluation
-                </x-filament::tabs.item>
-            </x-filament::tabs>
-        </x-slot>
+        <x-filament::tabs class="mb-4">
+            <x-filament::tabs.item
+                :active="$activeTable === 'student_evaluation'"
+                wire:click="$set('activeTable', 'student_evaluation')"
+                icon="heroicon-o-users"
+            >
+                Student Evaluation
+            </x-filament::tabs.item>
+
+            <x-filament::tabs.item
+                :active="$activeTable === 'supervisor_evaluation'"
+                wire:click="$set('activeTable', 'supervisor_evaluation')"
+                icon="heroicon-o-user"
+            >
+                Supervisor Evaluation
+            </x-filament::tabs.item>
+        </x-filament::tabs>
 
         {{ $this->table }}
-    </x-filament::section>
+    </x-filament::card>
 </x-filament-widgets::widget>

@@ -1,7 +1,10 @@
 <x-filament-widgets::widget>
-    <x-filament::section>
+    <x-filament::card>
+
+        @include('filament.instructor.widgets.partials.kra-widget-header')
+
         <x-slot name="heading">
-            <x-filament::tabs wire:model.live="activeTable">
+            <x-filament::tabs wire:model.live="activeTable" class="mb-4">
                 <x-filament::tabs.item
                     wire:click="$set('activeTable', 'sole_authorship')"
                     :active="$activeTable === 'sole_authorship'"
@@ -17,6 +20,7 @@
                 </x-filament::tabs.item>
             </x-filament::tabs>
         </x-slot>
+
         {{ $this->table }}
-    </x-filament::section>
+    </x-filament::card>
 </x-filament-widgets::widget>

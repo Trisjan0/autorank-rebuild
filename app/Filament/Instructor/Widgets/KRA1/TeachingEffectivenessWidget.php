@@ -10,16 +10,17 @@ use Filament\Forms\Get;
 use Filament\Tables;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Instructor\Widgets\BaseKRAWidget;
 
-class TeachingEffectivenessWidget extends BaseWidget
+class TeachingEffectivenessWidget extends BaseKRAWidget
 {
     protected int | string | array $columnSpan = 'full';
 
@@ -32,6 +33,18 @@ class TeachingEffectivenessWidget extends BaseWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getKACategory(): string
+    {
+        return 'KRA I';
+    }
+
+    protected function getActiveSubmissionType(): string
+    {
+        return $this->activeTable === 'student_evaluation'
+            ? 'te-student-evaluation'
+            : 'te-supervisor-evaluation';
     }
 
     public function table(Table $table): Table
@@ -47,48 +60,12 @@ class TeachingEffectivenessWidget extends BaseWidget
             );
     }
 
-    /**
-     * Check if a submission already exists for the active tab and application cycle.
-     */
-    protected function submissionExistsForCurrentType(): bool
-    {
-        $activeApplicationId = Auth::user()?->activeApplication?->id;
-        if (!$activeApplicationId) {
-            return false; // temporarily allow no application id submission
-        }
-
-        return Submission::where('user_id', Auth::id())
-            ->where('application_id', $activeApplicationId)
-            ->where('type', $this->getActiveSubmissionType())
-            ->exists();
-    }
-
-    protected function getCurrentSubmissionId(): ?int
-    {
-        $activeApplicationId = Auth::user()?->activeApplication?->id;
-        if (!$activeApplicationId) {
-            return null;
-        }
-
-        return Submission::where('user_id', Auth::id())
-            ->where('application_id', $activeApplicationId)
-            ->where('type', $this->getActiveSubmissionType())
-            ->value('id');
-    }
-
-    protected function getActiveSubmissionType(): string
-    {
-        return $this->activeTable === 'student_evaluation'
-            ? 'te-student-evaluation'
-            : 'te-supervisor-evaluation';
-    }
-
-
     protected function getTableQuery(): Builder
     {
         return Submission::query()
             ->where('user_id', Auth::id())
-            ->where('type', $this->getActiveSubmissionType());
+            ->where('type', $this->getActiveSubmissionType())
+            ->where('application_id', $this->selectedApplicationId);
     }
 
     protected function getTableHeading(): string
@@ -156,14 +133,15 @@ class TeachingEffectivenessWidget extends BaseWidget
                 ->form($this->getFormSchema())
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
-                    $data['application_id'] = Auth::user()?->activeApplication?->id ?? null; // temporarily allow no application id submission
-                    $data['category'] = 'KRA I';
+                    $data['application_id'] = $this->selectedApplicationId;
+                    $data['category'] = $this->getKACategory();
                     $data['type'] = $this->getActiveSubmissionType();
                     return $data;
                 })
                 ->modalHeading('Submit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('4xl')
-                ->hidden(fn(): bool => $this->submissionExistsForCurrentType()),
+                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                ->after(fn() => $this->mount()),
         ];
     }
 
@@ -174,13 +152,14 @@ class TeachingEffectivenessWidget extends BaseWidget
                 ->label('Edit Evaluation Data')
                 ->form($this->getFormSchema())
                 ->modalHeading('Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
-                ->modalWidth('4xl'),
+                ->modalWidth('4xl')
+                ->visible($this->getActionVisibility()),
+            DeleteAction::make()
+                ->after(fn() => $this->mount())
+                ->visible($this->getActionVisibility()),
         ];
     }
 
-    /**
-     * Helper to generate the 8 rating fields for the form.
-     */
     private function getRatingFields(): array
     {
         $prefix = $this->activeTable === 'student_evaluation' ? 'student' : 'supervisor';
