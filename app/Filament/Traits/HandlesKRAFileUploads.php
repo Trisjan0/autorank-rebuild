@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use App\Exceptions\GoogleAccountDisconnectedException;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
 
 trait HandlesKRAFileUploads
 {
@@ -38,10 +39,10 @@ trait HandlesKRAFileUploads
             ->preserveFilenames()
             ->openable()
             ->downloadable()
-            ->getUploadedFileUsing(function (string $fileId): ?array {
+            ->hidden(fn(string $operation): bool => $operation === 'edit')
+            ->getUploadedFileUsing(function (FileUpload $component, string $fileId): ?array {
 
-                /** @var \App\Models\Submission $record */
-                $record = $this->getRecord();
+                $record = $component->getRecord();
 
                 if (!$record) {
                     return null;

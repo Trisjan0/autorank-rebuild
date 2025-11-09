@@ -32,9 +32,18 @@ class MentorshipServicesWidget extends BaseKRAWidget
 
     public ?string $activeTable = 'adviser';
 
+    public array $availableMentorshipTypes = [];
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->loadAvailableTypes();
+    }
+
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+        $this->loadAvailableTypes();
     }
 
     protected function getOptionsMaps(): array
@@ -57,9 +66,10 @@ class MentorshipServicesWidget extends BaseKRAWidget
         ];
     }
 
-    private function getAvailableMentorshipTypes(): array
+    private function loadAvailableTypes(): void
     {
         $allTypes = $this->getOptionsMaps()['mentorship_type'];
+
         $submittedTypes = Submission::where('user_id', Auth::id())
             ->where('application_id', $this->selectedApplicationId)
             ->where('type', $this->getActiveSubmissionType())
@@ -68,11 +78,16 @@ class MentorshipServicesWidget extends BaseKRAWidget
             ->filter()
             ->all();
 
-        return array_filter(
+        $this->availableMentorshipTypes = array_filter(
             $allTypes,
             fn($key) => !in_array($key, $submittedTypes),
             ARRAY_FILTER_USE_KEY
         );
+    }
+
+    private function getAvailableMentorshipTypes(): array
+    {
+        return $this->availableMentorshipTypes;
     }
 
     protected function getGoogleDriveFolderPath(): array
@@ -191,9 +206,12 @@ class MentorshipServicesWidget extends BaseKRAWidget
                     if ($this->activeTable === 'mentor') {
                         return false;
                     }
-                    return empty($this->getAvailableMentorshipTypes());
+                    return empty($this->availableMentorshipTypes);
                 })
-                ->after(fn() => $this->mount()),
+                ->after(function () {
+                    $this->loadAvailableTypes();
+                    $this->mount();
+                }),
         ];
     }
 
@@ -207,7 +225,10 @@ class MentorshipServicesWidget extends BaseKRAWidget
                 ->modalWidth('3xl')
                 ->visible($this->getActionVisibility()),
             DeleteAction::make()
-                ->after(fn() => $this->mount())
+                ->after(function () {
+                    $this->loadAvailableTypes();
+                    $this->mount();
+                })
                 ->visible($this->getActionVisibility()),
         ];
     }
@@ -245,7 +266,7 @@ class MentorshipServicesWidget extends BaseKRAWidget
                         if ($record) {
                             return $allTypes;
                         }
-                        return $this->getAvailableMentorshipTypes();
+                        return $this->availableMentorshipTypes;
                     })
                     ->searchable()
                     ->required(),

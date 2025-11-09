@@ -34,9 +34,18 @@ class ProfessionalServicesWidget extends BaseKRAWidget
 
     public ?string $activeTable = 'accreditation_services';
 
+    public array $availableMediaServiceTypes = [];
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->loadAvailableTypes();
+    }
+
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+        $this->loadAvailableTypes();
     }
 
     protected function getGoogleDriveFolderPath(): array
@@ -113,8 +122,13 @@ class ProfessionalServicesWidget extends BaseKRAWidget
         ];
     }
 
-    private function getAvailableMediaServiceTypes(): array
+    private function loadAvailableTypes(): void
     {
+        if ($this->activeTable !== 'media_service') {
+            $this->availableMediaServiceTypes = [];
+            return;
+        }
+
         $allTypes = $this->getOptionsMaps()['media_service'];
 
         $submittedTypes = Submission::where('user_id', Auth::id())
@@ -125,11 +139,16 @@ class ProfessionalServicesWidget extends BaseKRAWidget
             ->filter()
             ->all();
 
-        return array_filter(
+        $this->availableMediaServiceTypes = array_filter(
             $allTypes,
             fn($key) => !in_array($key, $submittedTypes),
             ARRAY_FILTER_USE_KEY
         );
+    }
+
+    private function getAvailableMediaServiceTypes(): array
+    {
+        return $this->availableMediaServiceTypes;
     }
 
     protected function getKACategory(): string
@@ -280,9 +299,12 @@ class ProfessionalServicesWidget extends BaseKRAWidget
                     if ($this->activeTable !== 'media_service') {
                         return false;
                     }
-                    return empty($this->getAvailableMediaServiceTypes());
+                    return empty($this->availableMediaServiceTypes);
                 })
-                ->after(fn() => $this->mount()),
+                ->after(function () {
+                    $this->loadAvailableTypes();
+                    $this->mount();
+                }),
         ];
     }
 
@@ -296,7 +318,10 @@ class ProfessionalServicesWidget extends BaseKRAWidget
                 ->modalWidth('3xl')
                 ->visible($this->getActionVisibility()),
             DeleteAction::make()
-                ->after(fn() => $this->mount())
+                ->after(function () {
+                    $this->loadAvailableTypes();
+                    $this->mount();
+                })
                 ->visible($this->getActionVisibility()),
         ];
     }
