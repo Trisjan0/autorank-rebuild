@@ -157,4 +157,23 @@ abstract class BaseKRAWidget extends BaseWidget implements HasActions
             return $record->application?->status === 'draft';
         };
     }
+
+    /**
+     * Provides a map of formatting rules for the data.
+     * Child widgets will override this.
+     *
+     * The key MUST be the *final display key* (e.g., "Material Type").
+     * The value is either an array (for options) or a string (for date formats).
+     *
+     * @return array e.g., [
+     * 'Material Type' => [
+     * 'raw_key' => 'Display Value',
+     * ],
+     * 'Date Published' => 'm/d/Y',
+     * ]
+     */
+    public function getDisplayFormattingMap(): array
+    {
+        return [];
+    }
 }

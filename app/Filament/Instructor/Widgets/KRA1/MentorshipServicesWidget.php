@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA1;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-// use Filament\Forms\Components\FileUpload; // No longer needed
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
@@ -19,6 +18,7 @@ use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Instructor\Widgets\BaseKRAWidget;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class MentorshipServicesWidget extends BaseKRAWidget
 {
@@ -37,24 +37,35 @@ class MentorshipServicesWidget extends BaseKRAWidget
         $this->resetTable();
     }
 
-    private function getMentorshipTypeOptions(): array
+    protected function getOptionsMaps(): array
     {
         return [
-            'special_capstone_project' => 'Special/Capstone Project',
-            'undergrad_thesis' => 'Undergrad Thesis',
-            'masters_thesis' => 'Masters Thesis',
-            'dissertation' => 'Dissertation',
+            'mentorship_type' => [
+                'special_capstone_project' => 'Special/Capstone Project',
+                'undergrad_thesis' => 'Undergrad Thesis',
+                'masters_thesis' => 'Masters Thesis',
+                'dissertation' => 'Dissertation',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Mentorship Type' => $this->getOptionsMaps()['mentorship_type'],
+            'Date Awarded' => 'm/d/Y',
         ];
     }
 
     private function getAvailableMentorshipTypes(): array
     {
-        $allTypes = $this->getMentorshipTypeOptions();
-
+        $allTypes = $this->getOptionsMaps()['mentorship_type'];
         $submittedTypes = Submission::where('user_id', Auth::id())
             ->where('application_id', $this->selectedApplicationId)
             ->where('type', $this->getActiveSubmissionType())
-            ->pluck('data.mentorship_type')
+            ->pluck('data')
+            ->pluck('mentorship_type')
+            ->filter()
             ->all();
 
         return array_filter(
@@ -144,7 +155,7 @@ class MentorshipServicesWidget extends BaseKRAWidget
             'adviser', 'panel' => [
                 Tables\Columns\TextColumn::make('data.mentorship_type')
                     ->label('Type')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['mentorship_type'][$state] ?? $state)
                     ->badge(),
 
                 ...$this->getTableAcademicYearColumns(),
@@ -154,7 +165,7 @@ class MentorshipServicesWidget extends BaseKRAWidget
             'mentor' => [
                 Tables\Columns\TextColumn::make('data.competition_name')->label('Name of Competition')->wrap(),
                 Tables\Columns\TextColumn::make('data.award_received')->label('Award Received'),
-                Tables\Columns\TextColumn::make('data.date_awarded')->label('Date Awarded')->date(),
+                Tables\Columns\TextColumn::make('data.date_awarded')->label('Date Awarded')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ],
             default => [],
@@ -180,7 +191,6 @@ class MentorshipServicesWidget extends BaseKRAWidget
                     if ($this->activeTable === 'mentor') {
                         return false;
                     }
-
                     return empty($this->getAvailableMentorshipTypes());
                 })
                 ->after(fn() => $this->mount()),
@@ -190,6 +200,7 @@ class MentorshipServicesWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => 'Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
@@ -230,12 +241,10 @@ class MentorshipServicesWidget extends BaseKRAWidget
                 Select::make('data.mentorship_type')
                     ->label('Mentorship Type')
                     ->options(function (?Submission $record): array {
-                        $allTypes = $this->getMentorshipTypeOptions();
-
+                        $allTypes = $this->getOptionsMaps()['mentorship_type'];
                         if ($record) {
                             return $allTypes;
                         }
-
                         return $this->getAvailableMentorshipTypes();
                     })
                     ->searchable()

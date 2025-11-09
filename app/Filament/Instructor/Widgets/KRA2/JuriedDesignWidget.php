@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class JuriedDesignWidget extends BaseKRAWidget
 {
@@ -41,6 +42,25 @@ class JuriedDesignWidget extends BaseKRAWidget
         return 'creative-juried-design';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'classification' => [
+                'architecture' => 'Architecture',
+                'engineering' => 'Engineering',
+                'industrial_design' => 'Industrial Design',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Classification' => $this->getOptionsMaps()['classification'],
+            'Activity Date' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -50,10 +70,10 @@ class JuriedDesignWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
                 Tables\Columns\TextColumn::make('data.classification')
                     ->label('Classification')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['classification'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.reviewer')->label('Reviewer/Evaluator'),
-                Tables\Columns\TextColumn::make('data.date_activity')->label('Activity Date')->date(),
+                Tables\Columns\TextColumn::make('data.date_activity')->label('Activity Date')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions([
@@ -72,6 +92,7 @@ class JuriedDesignWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Juried Design')
@@ -101,11 +122,7 @@ class JuriedDesignWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.classification')
                 ->label('Classification')
-                ->options([
-                    'architecture' => 'Architecture',
-                    'engineering' => 'Engineering',
-                    'industrial_design' => 'Industrial Design',
-                ])
+                ->options($this->getOptionsMaps()['classification'])
                 ->searchable()
                 ->required(),
             TextInput::make('data.reviewer')

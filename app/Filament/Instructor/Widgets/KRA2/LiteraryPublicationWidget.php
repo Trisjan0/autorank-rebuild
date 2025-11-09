@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class LiteraryPublicationWidget extends BaseKRAWidget
 {
@@ -41,6 +42,27 @@ class LiteraryPublicationWidget extends BaseKRAWidget
         return 'creative-literary-publication';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'literary_type' => [
+                'novel' => 'Novel',
+                'short_story' => 'Short Story',
+                'essay' => 'Essay',
+                'poetry' => 'Poetry',
+                'others' => 'Others',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Literary Type' => $this->getOptionsMaps()['literary_type'],
+            'Date Published' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -50,10 +72,10 @@ class LiteraryPublicationWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
                 Tables\Columns\TextColumn::make('data.literary_type')
                     ->label('Type')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['literary_type'][$state] ?? $state)
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
-                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions([
@@ -72,6 +94,7 @@ class LiteraryPublicationWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Literary Publication')
@@ -101,13 +124,7 @@ class LiteraryPublicationWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.literary_type')
                 ->label('Type of Literary Publication')
-                ->options([
-                    'novel' => 'Novel',
-                    'short_story' => 'Short Story',
-                    'essay' => 'Essay',
-                    'poetry' => 'Poetry',
-                    'others' => 'Others',
-                ])
+                ->options($this->getOptionsMaps()['literary_type'])
                 ->searchable()
                 ->required(),
             TextInput::make('data.reviewer')

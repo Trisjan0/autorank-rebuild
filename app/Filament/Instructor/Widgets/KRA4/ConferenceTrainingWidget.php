@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class ConferenceTrainingWidget extends BaseKRAWidget
 {
@@ -44,6 +45,24 @@ class ConferenceTrainingWidget extends BaseKRAWidget
         return 'profdev-conference-training';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'scope' => [
+                'local' => 'Local',
+                'international' => 'International',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Scope' => $this->getOptionsMaps()['scope'],
+            'Date Activity' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -53,10 +72,10 @@ class ConferenceTrainingWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.name')->label('Name of Conference/Training')->wrap(),
                 Tables\Columns\TextColumn::make('data.scope')
                     ->label('Scope')
-                    ->formatStateUsing(fn(?string $state): string => Str::title($state))
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['scope'][$state] ?? Str::title($state ?? ''))
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.organizer')->label('Organizer'),
-                Tables\Columns\TextColumn::make('data.date_activity')->label('Date of Activity')->date(),
+                Tables\Columns\TextColumn::make('data.date_activity')->label('Date of Activity')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions($this->getTableHeaderActions())
@@ -94,6 +113,7 @@ class ConferenceTrainingWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             Tables\Actions\EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading('Edit Conference/Training Participation')
@@ -115,10 +135,7 @@ class ConferenceTrainingWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.scope')
                 ->label('Scope')
-                ->options([
-                    'local' => 'Local',
-                    'international' => 'International',
-                ])
+                ->options($this->getOptionsMaps()['scope'])
                 ->searchable()
                 ->required(),
             TextInput::make('data.organizer')

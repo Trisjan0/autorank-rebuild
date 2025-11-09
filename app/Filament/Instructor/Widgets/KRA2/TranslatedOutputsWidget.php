@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class TranslatedOutputsWidget extends BaseKRAWidget
 {
@@ -62,6 +63,14 @@ class TranslatedOutputsWidget extends BaseKRAWidget
             : 'research-translated-contributor';
     }
 
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Date Completed' => 'm/d/Y',
+            'Date Utilized' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -94,15 +103,15 @@ class TranslatedOutputsWidget extends BaseKRAWidget
             'lead_researcher' => [
                 Tables\Columns\TextColumn::make('data.title')->label('Title of Research')->wrap(),
                 Tables\Columns\TextColumn::make('data.project_name')->label('Project/Policy/Product Name')->wrap(),
-                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
-                Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date(),
+                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date('m/d/Y'),
+                Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ],
             'contributor' => [
                 Tables\Columns\TextColumn::make('data.title')->label('Title of Research')->wrap(),
                 Tables\Columns\TextColumn::make('data.project_name')->label('Project/Policy/Product Name')->wrap(),
-                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
-                Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date(),
+                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date('m/d/Y'),
+                Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized/Implemented')->date('m/d/Y'),
                 Tables\Columns\TextColumn::make('data.contribution_percentage')
                     ->label('% Contribution')
                     ->suffix('%'),
@@ -134,6 +143,7 @@ class TranslatedOutputsWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => 'Edit Translated Output (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')

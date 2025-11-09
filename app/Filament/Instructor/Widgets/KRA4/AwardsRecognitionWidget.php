@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class AwardsRecognitionWidget extends BaseKRAWidget
 {
@@ -43,6 +44,25 @@ class AwardsRecognitionWidget extends BaseKRAWidget
         return 'profdev-award-recognition';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'scope' => [
+                'institutional' => 'Institutional',
+                'local' => 'Local',
+                'regional' => 'Regional',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Scope' => $this->getOptionsMaps()['scope'],
+            'Date Given' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -52,10 +72,10 @@ class AwardsRecognitionWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.name')->label('Name of the Award')->wrap(),
                 Tables\Columns\TextColumn::make('data.scope')
                     ->label('Scope')
-                    ->formatStateUsing(fn(?string $state): string => Str::title($state))
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['scope'][$state] ?? Str::title($state ?? ''))
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.awarding_body')->label('Award-Giving Body'),
-                Tables\Columns\TextColumn::make('data.date_given')->label('Date Given')->date(),
+                Tables\Columns\TextColumn::make('data.date_given')->label('Date Given')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions([
@@ -74,6 +94,7 @@ class AwardsRecognitionWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Award/Recognition')
@@ -104,11 +125,7 @@ class AwardsRecognitionWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.scope')
                 ->label('Scope of the Award')
-                ->options([
-                    'institutional' => 'Institutional',
-                    'local' => 'Local',
-                    'regional' => 'Regional',
-                ])
+                ->options($this->getOptionsMaps()['scope'])
                 ->searchable()
                 ->required(),
             TextInput::make('data.awarding_body')

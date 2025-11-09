@@ -54,12 +54,20 @@ class GoogleDriveService
             throw new GoogleAccountDisconnectedException('This user has not connected their Google Drive account or has revoked permission.');
         }
 
+        $client = new Client();
+        $client->setClientId(config('services.google.client_id'));
+        $client->setClientSecret(config('services.google.client_secret'));
+        $client->setAccessType('offline');
+
         try {
-            $client = new Client();
-            $client->setClientId(config('services.google.client_id'));
-            $client->setClientSecret(config('services.google.client_secret'));
-            $client->refreshToken($user->google_refresh_token);
-            $client->setAccessType('offline');
+            if ($user->google_token) {
+                $client->setAccessToken($user->google_token);
+            }
+
+            if (!$user->google_token || $client->isAccessTokenExpired()) {
+                $newAccessToken = $client->fetchAccessTokenWithRefreshToken($user->google_refresh_token);
+                $user->update(['google_token' => $newAccessToken]);
+            }
 
             return new Drive($client);
         } catch (\Exception $e) {
@@ -67,6 +75,7 @@ class GoogleDriveService
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
+
             $user->update([
                 'google_token' => null,
                 'google_refresh_token' => null,
@@ -194,7 +203,7 @@ class GoogleDriveService
      * Gets the file content as a stream for viewing.
      *
      * @param string $fileId
-     * @return array An array containing ['content' => stream, 'metadata' => DriveFile]
+     * @return array An array containing ['stream' => \Psr\Http\Message\StreamInterface, 'metadata' => DriveFile]
      */
     public function getFileStream(string $fileId): array
     {
@@ -202,14 +211,39 @@ class GoogleDriveService
             throw new \Exception('GoogleDriveService must be initialized with forUser() before viewing.');
         }
 
-        /** @var ResponseInterface $response */
-        $response = $this->service->files->get($fileId, ['alt' => 'media']);
-        $content = $response->getBody()->getContents();
         $metadata = $this->service->files->get($fileId, ['fields' => 'mimeType, name']);
 
+        /** @var ResponseInterface $response */
+        $response = $this->service->files->get($fileId, ['alt' => 'media']);
+
         return [
-            'content' => $content,
+            'stream' => $response->getBody(),
             'metadata' => $metadata,
         ];
+    }
+
+    /**
+     * Gets the embeddable 'webViewLink' for a file.
+     *
+     * @param string $fileId
+     * @return string|null The embeddable URL or null on failure.
+     */
+    public function getWebViewLink(string $fileId): ?string
+    {
+        if (!$this->service) {
+            throw new \Exception('GoogleDriveService must be initialized with forUser() before getting a web view link.');
+        }
+
+        try {
+            $file = $this->service->files->get($fileId, ['fields' => 'webViewLink']);
+            return $file->getWebViewLink();
+        } catch (\Exception $e) {
+            Log::error('Could not get webViewLink for file.', [
+                'file_id' => $fileId,
+                'user_id' => $this->user?->id,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 }

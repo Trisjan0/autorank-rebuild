@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class IndustryExperienceWidget extends BaseKRAWidget
 {
@@ -47,6 +48,26 @@ class IndustryExperienceWidget extends BaseKRAWidget
         return 'profdev-industry-experience';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'designation' => [
+                'managerial_supervisory' => 'Managerial/Supervisory',
+                'technical_skilled' => 'Technical/Skilled',
+                'support_administrative' => 'Support/Administrative',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Designation' => $this->getOptionsMaps()['designation'],
+            'Period Start' => 'm/d/Y',
+            'Period End' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -56,11 +77,11 @@ class IndustryExperienceWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.org_name')->label('Company/Organization')->wrap(),
                 Tables\Columns\TextColumn::make('data.designation')
                     ->label('Designation/Position')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['designation'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.no_of_years')->label('No. of Years'),
-                Tables\Columns\TextColumn::make('data.period_start')->label('Period Start')->date(),
-                Tables\Columns\TextColumn::make('data.period_end')->label('Period End')->date(),
+                Tables\Columns\TextColumn::make('data.period_start')->label('Period Start')->date('m/d/Y'),
+                Tables\Columns\TextColumn::make('data.period_end')->label('Period End')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions([
@@ -79,6 +100,7 @@ class IndustryExperienceWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Industry Experience Record')
@@ -110,11 +132,7 @@ class IndustryExperienceWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.designation')
                 ->label('Designation/Position')
-                ->options([
-                    'managerial_supervisory' => 'Managerial/Supervisory',
-                    'technical_skilled' => 'Technical/Skilled',
-                    'support_administrative' => 'Support/Administrative',
-                ])
+                ->options($this->getOptionsMaps()['designation'])
                 ->required()
                 ->searchable(),
             DatePicker::make('data.period_start')

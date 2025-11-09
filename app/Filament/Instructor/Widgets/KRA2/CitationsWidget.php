@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class CitationsWidget extends BaseKRAWidget
 {
@@ -62,6 +63,13 @@ class CitationsWidget extends BaseKRAWidget
             : 'research-citation-international';
     }
 
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Date Published' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -95,7 +103,7 @@ class CitationsWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.title')->label('Title of Journal Article')->wrap(),
                 Tables\Columns\TextColumn::make('data.journal_name')->label('Name of Journal'),
                 Tables\Columns\TextColumn::make('data.citation_count')->label('No. of Citations')->numeric(),
-                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ],
             default => [],
@@ -124,6 +132,7 @@ class CitationsWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => 'Edit Citation (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')

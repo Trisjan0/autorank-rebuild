@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class PublishedPapersWidget extends BaseKRAWidget
 {
@@ -64,6 +65,27 @@ class PublishedPapersWidget extends BaseKRAWidget
             : 'research-co-authorship';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'output_type' => [
+                'book' => 'Book',
+                'journal_article' => 'Journal Article',
+                'book_chapter' => 'Book Chapter',
+                'monograph' => 'Monograph',
+                'other_peer_reviewed_output' => 'Other Peer-Reviewed Output',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Output Type' => $this->getOptionsMaps()['output_type'],
+            'Date Published' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -99,20 +121,20 @@ class PublishedPapersWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
                 Tables\Columns\TextColumn::make('data.output_type')
                     ->label('Output Type')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['output_type'][$state] ?? $state)
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
-                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ],
             'co_authorship' => [
                 Tables\Columns\TextColumn::make('data.title')->label('Title')->wrap(),
                 Tables\Columns\TextColumn::make('data.output_type')
                     ->label('Output Type')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['output_type'][$state] ?? $state)
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.publisher')->label('Publisher'),
-                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date(),
+                Tables\Columns\TextColumn::make('data.date_published')->label('Date Published')->date('m/d/Y'),
                 Tables\Columns\TextColumn::make('data.contribution_percentage')
                     ->label('% Contribution')
                     ->suffix('%'),
@@ -146,6 +168,7 @@ class PublishedPapersWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => $this->activeTable === 'sole_authorship'
@@ -170,13 +193,7 @@ class PublishedPapersWidget extends BaseKRAWidget
 
             Select::make('data.output_type')
                 ->label('Type of Research Output')
-                ->options([
-                    'book' => 'Book',
-                    'journal_article' => 'Journal Article',
-                    'book_chapter' => 'Book Chapter',
-                    'monograph' => 'Monograph',
-                    'other_peer_reviewed_output' => 'Other Peer-Reviewed Output',
-                ])
+                ->options($this->getOptionsMaps()['output_type'])
                 ->required()
                 ->searchable()
                 ->live()

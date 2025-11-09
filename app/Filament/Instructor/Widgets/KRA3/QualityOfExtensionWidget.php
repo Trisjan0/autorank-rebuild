@@ -19,6 +19,7 @@ use App\Forms\Components\TrimmedIntegerInput;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class QualityOfExtensionWidget extends BaseKRAWidget
 {
@@ -48,6 +49,25 @@ class QualityOfExtensionWidget extends BaseKRAWidget
     protected function getActiveSubmissionType(): string
     {
         return 'extension-quality-rating';
+    }
+
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'deduction_reason' => [
+                'NOT APPLICABLE' => 'Not Applicable',
+                'ON APPROVED STUDY LEAVE' => 'On Approved Study Leave',
+                'ON APPROVED SABBATICAL LEAVE' => 'On Approved Sabbatical Leave',
+                'ON APPROVED MATERNITY LEAVE' => 'On Approved Maternity Leave',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Client Deduction Reason' => $this->getOptionsMaps()['deduction_reason'],
+        ];
     }
 
     public function table(Table $table): Table
@@ -120,6 +140,8 @@ class QualityOfExtensionWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
+
                 EditAction::make()
                     ->label('Edit Rating Data')
                     ->form($this->getFormSchema())
@@ -191,12 +213,7 @@ class QualityOfExtensionWidget extends BaseKRAWidget
                 ->schema([
                     Select::make($reasonKey)
                         ->label('Reason for Deducting Semesters (Leave)')
-                        ->options([
-                            'NOT APPLICABLE' => 'Not Applicable',
-                            'ON APPROVED STUDY LEAVE' => 'On Approved Study Leave',
-                            'ON APPROVED SABBATICAL LEAVE' => 'On Approved Sabbatical Leave',
-                            'ON APPROVED MATERNITY LEAVE' => 'On Approved Maternity Leave',
-                        ])
+                        ->options($this->getOptionsMaps()['deduction_reason'])
                         ->default('NOT APPLICABLE')
                         ->searchable()
                         ->required()

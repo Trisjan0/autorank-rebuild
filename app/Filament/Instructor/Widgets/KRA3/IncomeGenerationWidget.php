@@ -17,6 +17,7 @@ use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 use Filament\Forms\Get;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class IncomeGenerationWidget extends BaseKRAWidget
 {
@@ -43,6 +44,25 @@ class IncomeGenerationWidget extends BaseKRAWidget
         return 'extension-income-generation';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'role' => [
+                'lead_contributor' => 'Lead Contributor',
+                'co_contributor' => 'Co-contributor',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Role' => $this->getOptionsMaps()['role'],
+            'Coverage Start' => 'm/d/Y',
+            'Coverage End' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -52,7 +72,7 @@ class IncomeGenerationWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.name')->label('Name of Product/Project')->wrap(),
                 Tables\Columns\TextColumn::make('data.role')
                     ->label('Role')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['role'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                     ->badge(),
                 Tables\Columns\TextColumn::make('data.amount')
                     ->label('Total Amount')
@@ -76,6 +96,7 @@ class IncomeGenerationWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Income Generation Contribution')
@@ -105,10 +126,7 @@ class IncomeGenerationWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.role')
                 ->label('Role')
-                ->options([
-                    'lead_contributor' => 'Lead Contributor',
-                    'co_contributor' => 'Co-contributor',
-                ])
+                ->options($this->getOptionsMaps()['role'])
                 ->searchable()
                 ->required(),
             TrimmedNumericInput::make('data.amount')

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class EducationalQualificationsWidget extends BaseKRAWidget
 {
@@ -69,6 +70,26 @@ class EducationalQualificationsWidget extends BaseKRAWidget
             : 'profdev-additional-degree';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'degree_type' => [
+                'additional_doctorate' => 'Additional Doctorate Degree',
+                'additional_masters' => 'Additional Master\'s Degree',
+                'post_doctorate_diploma' => 'Post-Doctorate Diploma/Certificate',
+                'post_masters_diploma' => 'Post-Master\'s Diploma/Certificate',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Degree Type' => $this->getOptionsMaps()['degree_type'],
+            'Date Completed' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -104,7 +125,7 @@ class EducationalQualificationsWidget extends BaseKRAWidget
             return [
                 Tables\Columns\TextColumn::make('data.name')->label('Name of Doctorate Degree')->wrap(),
                 Tables\Columns\TextColumn::make('data.institution')->label('Name of Institution'),
-                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
+                Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date('m/d/Y'),
                 Tables\Columns\IconColumn::make('data.is_qualified')
                     ->label('Claimed for Sub-rank Increase?')
                     ->boolean(),
@@ -115,11 +136,11 @@ class EducationalQualificationsWidget extends BaseKRAWidget
         return [
             Tables\Columns\TextColumn::make('data.degree_type')
                 ->label('Type')
-                ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['degree_type'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                 ->badge(),
             Tables\Columns\TextColumn::make('data.name')->label('Degree/Diploma/Cert Name')->wrap(),
             Tables\Columns\TextColumn::make('data.institution')->label('Name of HEI'),
-            Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date(),
+            Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date('m/d/Y'),
             ScoreColumn::make('score'),
         ];
     }
@@ -147,6 +168,7 @@ class EducationalQualificationsWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Edit Doctorate Degree' : 'Edit Additional Qualification')
@@ -190,12 +212,7 @@ class EducationalQualificationsWidget extends BaseKRAWidget
             $schema = [
                 Select::make('data.degree_type')
                     ->label('Type')
-                    ->options([
-                        'additional_doctorate' => 'Additional Doctorate Degree',
-                        'additional_masters' => 'Additional Master\'s Degree',
-                        'post_doctorate_diploma' => 'Post-Doctorate Diploma/Certificate',
-                        'post_masters_diploma' => 'Post-Master\'s Diploma/Certificate',
-                    ])
+                    ->options($this->getOptionsMaps()['degree_type'])
                     ->required()
                     ->searchable(),
                 TextInput::make('data.name')

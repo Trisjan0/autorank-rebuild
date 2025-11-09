@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use Filament\Forms\Get;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class LinkagesWidget extends BaseKRAWidget
 {
@@ -42,6 +43,26 @@ class LinkagesWidget extends BaseKRAWidget
         return 'extension-linkage';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'faculty_role' => [
+                'lead_coordinator' => 'Lead Coordinator',
+                'assistant_coordinator' => 'Assistant Coordinator',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Faculty Role' => $this->getOptionsMaps()['faculty_role'],
+            'Moa Start' => 'm/d/Y',
+            'Moa Expiration' => 'm/d/Y',
+            'Activity Date' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -51,10 +72,10 @@ class LinkagesWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.partner_name')->label('Name of Partner')->wrap(),
                 Tables\Columns\TextColumn::make('data.faculty_role')
                     ->label('Faculty Role')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['faculty_role'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                     ->badge(),
-                Tables\Columns\TextColumn::make('data.moa_start')->label('MOA Start')->date(),
-                Tables\Columns\TextColumn::make('data.moa_expiration')->label('MOA Expiration')->date(),
+                Tables\Columns\TextColumn::make('data.moa_start')->label('MOA Start')->date('m/d/Y'),
+                Tables\Columns\TextColumn::make('data.moa_expiration')->label('MOA Expiration')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions([
@@ -73,6 +94,7 @@ class LinkagesWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Linkage/Partnership')
@@ -107,10 +129,7 @@ class LinkagesWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.faculty_role')
                 ->label('Faculty Role in the Forging of Partnership')
-                ->options([
-                    'lead_coordinator' => 'Lead Coordinator',
-                    'assistant_coordinator' => 'Assistant Coordinator',
-                ])
+                ->options($this->getOptionsMaps()['faculty_role'])
                 ->searchable()
                 ->required(),
             DatePicker::make('data.moa_start')

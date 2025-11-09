@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class NonPatentableInventionsWidget extends BaseKRAWidget
 {
@@ -75,6 +76,36 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
         };
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'developer_role' => [
+                'Sole Developer' => 'Sole Developer',
+                'Co-developer' => 'Co-developer'
+            ],
+            'type' => [
+                'plant' => 'Plant',
+                'animal' => 'Animal',
+                'microbe' => 'Microbe'
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        $maps = $this->getOptionsMaps();
+
+        return [
+            'Developer Role' => $maps['developer_role'],
+            'Type' => $maps['type'],
+            'Date Copyrighted' => 'm/d/Y',
+            'Date Utilized' => 'm/d/Y',
+            'Date Completed' => 'm/d/Y',
+            'Date Registered' => 'm/d/Y',
+            'Date Propagation' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -111,14 +142,14 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
 
         if (Str::startsWith($this->activeTable, 'software')) {
             $columns[] = Tables\Columns\TextColumn::make('data.copyright_no')->label('Copyright No.');
-            $columns[] = Tables\Columns\TextColumn::make('data.date_copyrighted')->label('Date Copyrighted')->date();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized')->date();
+            $columns[] = Tables\Columns\TextColumn::make('data.date_copyrighted')->label('Date Copyrighted')->date('m/d/Y');
+            $columns[] = Tables\Columns\TextColumn::make('data.date_utilized')->label('Date Utilized')->date('m/d/Y');
             $columns[] = Tables\Columns\TextColumn::make('data.end_user')->label('End User(s)');
         } elseif (Str::startsWith($this->activeTable, 'plant_animal')) {
-            $columns[] = Tables\Columns\TextColumn::make('data.type')->label('Type')->formatStateUsing(fn(?string $state): string => Str::title($state ?? ''))->badge();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_registered')->label('Date Registered')->date();
-            $columns[] = Tables\Columns\TextColumn::make('data.date_propagation')->label('Date Propagation')->date();
+            $columns[] = Tables\Columns\TextColumn::make('data.type')->label('Type')->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['type'][$state] ?? Str::title($state ?? ''))->badge();
+            $columns[] = Tables\Columns\TextColumn::make('data.date_completed')->label('Date Completed')->date('m/d/Y');
+            $columns[] = Tables\Columns\TextColumn::make('data.date_registered')->label('Date Registered')->date('m/d/Y');
+            $columns[] = Tables\Columns\TextColumn::make('data.date_propagation')->label('Date Propagation')->date('m/d/Y');
         }
 
         if ($this->activeTable === 'software_new_co' || $this->activeTable === 'plant_animal_co') {
@@ -126,7 +157,7 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
         }
 
         if ($this->activeTable === 'software_updated') {
-            $columns[] = Tables\Columns\TextColumn::make('data.developer_role')->label('Role')->badge();
+            $columns[] = Tables\Columns\TextColumn::make('data.developer_role')->label('Role')->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['developer_role'][$state] ?? $state)->badge();
             $columns[] = Tables\Columns\TextColumn::make('data.update_details')->label('Update Details')->wrap()->limit(50);
         }
 
@@ -157,6 +188,7 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading(fn(): string => 'Edit ' . Str::of($this->activeTable)->replace('_', ' ')->title())
@@ -171,6 +203,7 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
     protected function getFormSchema(): array
     {
         $schema = [];
+        $maps = $this->getOptionsMaps();
 
         if (Str::startsWith($this->activeTable, 'software')) {
             $schema = [
@@ -198,7 +231,7 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
             } elseif ($this->activeTable === 'software_updated') {
                 $schema[] = Select::make('data.developer_role')
                     ->label('Developer Role')
-                    ->options(['Sole Developer' => 'Sole Developer', 'Co-developer' => 'Co-developer'])
+                    ->options($maps['developer_role'])
                     ->searchable()
                     ->required();
                 $schema[] = Textarea::make('data.update_details')->label('Specify New Features / Update Details')->required()->columnSpanFull();
@@ -208,7 +241,7 @@ class NonPatentableInventionsWidget extends BaseKRAWidget
                 TextInput::make('data.name')->label('Name of Plant Variety, Animal Breed, or Microbial Strain')->maxLength(255)->required()->columnSpanFull(),
                 Select::make('data.type')
                     ->label('Type')
-                    ->options(['plant' => 'Plant', 'animal' => 'Animal', 'microbe' => 'Microbe'])
+                    ->options($maps['type'])
                     ->searchable()
                     ->required(),
                 DatePicker::make('data.date_completed')

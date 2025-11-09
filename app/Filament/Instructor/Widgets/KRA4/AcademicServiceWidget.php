@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class AcademicServiceWidget extends BaseKRAWidget
 {
@@ -45,6 +46,27 @@ class AcademicServiceWidget extends BaseKRAWidget
     protected function getActiveSubmissionType(): string
     {
         return 'profdev-academic-service';
+    }
+
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'designation' => [
+                'president' => 'President',
+                'vp_dean_director' => 'Vice President, Dean or Director',
+                'dept_program_head' => 'Department/Program Head',
+                'faculty_member' => 'Faculty Member',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Designation' => $this->getOptionsMaps()['designation'],
+            'Period Start' => 'm/d/Y',
+            'Period End' => 'm/d/Y',
+        ];
     }
 
     public function table(Table $table): Table
@@ -72,11 +94,11 @@ class AcademicServiceWidget extends BaseKRAWidget
             Tables\Columns\TextColumn::make('data.hei_name')->label('Name of HEI')->wrap(),
             Tables\Columns\TextColumn::make('data.designation')
                 ->label('Designation/Position')
-                ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['designation'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                 ->badge(),
             Tables\Columns\TextColumn::make('data.no_of_years')->label('No. of Years'),
-            Tables\Columns\TextColumn::make('data.period_start')->label('Period Start')->date(),
-            Tables\Columns\TextColumn::make('data.period_end')->label('Period End')->date(),
+            Tables\Columns\TextColumn::make('data.period_start')->label('Period Start')->date('m/d/Y'),
+            Tables\Columns\TextColumn::make('data.period_end')->label('Period End')->date('m/d/Y'),
             ScoreColumn::make('score'),
         ];
     }
@@ -103,6 +125,7 @@ class AcademicServiceWidget extends BaseKRAWidget
     protected function getTableActions(): array
     {
         return [
+            ViewSubmissionFilesAction::make(),
             Tables\Actions\EditAction::make()
                 ->form($this->getFormSchema())
                 ->modalHeading('Edit Academic Service Record')
@@ -124,12 +147,7 @@ class AcademicServiceWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.designation')
                 ->label('Designation/Position')
-                ->options([
-                    'president' => 'President',
-                    'vp_dean_director' => 'Vice President, Dean or Director',
-                    'dept_program_head' => 'Department/Program Head',
-                    'faculty_member' => 'Faculty Member',
-                ])
+                ->options($this->getOptionsMaps()['designation'])
                 ->required()
                 ->searchable(),
             DatePicker::make('data.period_start')

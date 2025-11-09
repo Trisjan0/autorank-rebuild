@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Traits\HandlesKRAFileUploads;
+use App\Tables\Actions\ViewSubmissionFilesAction;
 
 class ProfessionalOrganizationsWidget extends BaseKRAWidget
 {
@@ -44,6 +45,29 @@ class ProfessionalOrganizationsWidget extends BaseKRAWidget
         return 'profdev-organization';
     }
 
+    protected function getOptionsMaps(): array
+    {
+        return [
+            'role' => [
+                'board_member' => 'Board Member',
+                'officer' => 'Officer',
+                'lead_organizer' => 'Lead Organizer',
+                'co_organizer' => 'Co-organizer',
+                'committee_chair' => 'Committee Chair',
+                'committee_member' => 'Committee Member',
+                'moderator' => 'Moderator',
+            ],
+        ];
+    }
+
+    public function getDisplayFormattingMap(): array
+    {
+        return [
+            'Role' => $this->getOptionsMaps()['role'],
+            'Date Activity' => 'm/d/Y',
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -54,10 +78,10 @@ class ProfessionalOrganizationsWidget extends BaseKRAWidget
                 Tables\Columns\TextColumn::make('data.type')->label('Type of Organization')->badge(),
                 Tables\Columns\TextColumn::make('data.role')
                     ->label('Role/Contribution')
-                    ->formatStateUsing(fn(?string $state): string => Str::of($state)->replace('_', ' ')->title())
+                    ->formatStateUsing(fn(?string $state): string => $this->getOptionsMaps()['role'][$state] ?? Str::of($state)->replace('_', ' ')->title())
                     ->badge()
                     ->wrap(),
-                Tables\Columns\TextColumn::make('data.date_activity')->label('Date of Activity')->date(),
+                Tables\Columns\TextColumn::make('data.date_activity')->label('Date of Activity')->date('m/d/Y'),
                 ScoreColumn::make('score'),
             ])
             ->headerActions([
@@ -76,6 +100,7 @@ class ProfessionalOrganizationsWidget extends BaseKRAWidget
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
+                ViewSubmissionFilesAction::make(),
                 Tables\Actions\EditAction::make()
                     ->form($this->getFormSchema())
                     ->modalHeading('Edit Involvement in Professional Organization')
@@ -121,15 +146,7 @@ class ProfessionalOrganizationsWidget extends BaseKRAWidget
                 ->columnSpanFull(),
             Select::make('data.role')
                 ->label('Role or Contribution to the Activity')
-                ->options([
-                    'board_member' => 'Board Member',
-                    'officer' => 'Officer',
-                    'lead_organizer' => 'Lead Organizer',
-                    'co_organizer' => 'Co-organizer',
-                    'committee_chair' => 'Committee Chair',
-                    'committee_member' => 'Committee Member',
-                    'moderator' => 'Moderator',
-                ])
+                ->options($this->getOptionsMaps()['role'])
                 ->required()
                 ->searchable()
                 ->columnSpanFull(),
