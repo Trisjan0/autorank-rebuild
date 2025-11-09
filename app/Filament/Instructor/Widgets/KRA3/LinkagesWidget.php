@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -16,14 +15,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
 use Filament\Forms\Get;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class LinkagesWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a3.linkages-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'A: Service to the Institution', 'Linkages'];
+    }
 
     protected function getKACategory(): string
     {
@@ -131,14 +138,8 @@ class LinkagesWidget extends BaseKRAWidget
                 ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra3-linkages')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

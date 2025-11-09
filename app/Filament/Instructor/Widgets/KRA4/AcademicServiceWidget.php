@@ -6,7 +6,6 @@ use App\Models\Submission;
 use Carbon\Carbon;
 use Closure;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
@@ -21,14 +20,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class AcademicServiceWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a4.academic-service-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'D: Bonus Criterion', 'Academic Service'];
+    }
 
     protected function getKACategory(): string
     {
@@ -170,14 +177,8 @@ class AcademicServiceWidget extends BaseKRAWidget
                         };
                     }
                 ]),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (e.g., Service Record, Contract)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra4-acadservice')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

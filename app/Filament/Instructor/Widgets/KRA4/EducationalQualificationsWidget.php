@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA4;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -19,9 +18,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class EducationalQualificationsWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -33,6 +35,26 @@ class EducationalQualificationsWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+        $baseFolder = 'B: Educational Qualifications';
+
+        switch ($this->activeTable) {
+            case 'doctorate_degree':
+                return [$kra, $baseFolder, 'Doctorate Degree'];
+            case 'additional_degrees':
+                return [$kra, $baseFolder, 'Additional Degrees'];
+            default:
+                return [$kra, $baseFolder, Str::slug($this->activeTable)];
+        }
+    }
+
+    protected function isMultipleSubmissionAllowed(): bool
+    {
+        return $this->activeTable !== 'doctorate_degree';
     }
 
     protected function getKACategory(): string
@@ -117,7 +139,7 @@ class EducationalQualificationsWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn(): string => $this->activeTable === 'doctorate_degree' ? 'Submit Doctorate Degree' : 'Submit Additional Qualification')
                 ->modalWidth('3xl')
-                ->hidden(fn(): bool => $this->activeTable === 'doctorate_degree' && $this->submissionExistsForCurrentType())
+                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                 ->after(fn() => $this->mount()),
         ];
     }
@@ -194,14 +216,7 @@ class EducationalQualificationsWidget extends BaseKRAWidget
             ];
         }
 
-        $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (e.g., TOR, Diploma, Certificate)')
-            ->multiple()
-            ->reorderable()
-            ->required()
-            ->disk('private')
-            ->directory(fn(): string => 'proof-documents/kra4-degrees/' . $this->activeTable)
-            ->columnSpanFull();
+        $schema[] = $this->getKRAFileUploadComponent();
 
         return $schema;
     }

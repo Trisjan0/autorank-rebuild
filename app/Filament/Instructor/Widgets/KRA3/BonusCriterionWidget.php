@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Get;
 use Filament\Tables;
@@ -17,14 +16,27 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class BonusCriterionWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a3.bonus-criterion-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'D: Bonus Criterion'];
+    }
+
+    protected function isMultipleSubmissionAllowed(): bool
+    {
+        return false;
+    }
 
     protected function getKACategory(): string
     {
@@ -64,6 +76,7 @@ class BonusCriterionWidget extends BaseKRAWidget
                     })
                     ->modalHeading('Submit Administrative Designation')
                     ->modalWidth('2xl')
+                    ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
@@ -128,14 +141,8 @@ class BonusCriterionWidget extends BaseKRAWidget
                 ->displayFormat('m/d/Y')
                 ->required()
                 ->minDate(fn(Get $get) => $get('data.period_start')),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra3-bonus')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

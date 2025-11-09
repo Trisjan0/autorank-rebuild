@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA2;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
@@ -18,9 +17,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class CitationsWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -32,6 +34,20 @@ class CitationsWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+
+        switch ($this->activeTable) {
+            case 'local_authors':
+                return [$kra, 'C: Citations', 'Local Authors'];
+            case 'international_authors':
+                return [$kra, 'C: Citations', 'International Authors'];
+            default:
+                return [$kra, Str::slug($this->getActiveSubmissionType())];
+        }
     }
 
     protected function getKACategory(): string
@@ -101,7 +117,6 @@ class CitationsWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn(): string => 'Submit New Citation (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')
                 ->modalWidth('3xl')
-                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                 ->after(fn() => $this->mount()),
         ];
     }
@@ -151,14 +166,8 @@ class CitationsWidget extends BaseKRAWidget
                 ->helperText('Can be a single year (e.g., 2023) or a range (e.g., 2022-2023).')
                 ->maxLength(50)
                 ->required(),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory(fn(): string => 'proof-documents/kra2-citation/' . $this->activeTable)
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

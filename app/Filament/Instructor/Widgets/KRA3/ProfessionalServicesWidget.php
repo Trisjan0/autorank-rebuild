@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,9 +19,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class ProfessionalServicesWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -34,6 +36,54 @@ class ProfessionalServicesWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+        $baseFolder = 'B: Service to the Community';
+
+        switch ($this->activeTable) {
+            case 'accreditation_services':
+                return [$kra, $baseFolder, 'QA Services'];
+            case 'judge_examiner':
+                return [$kra, $baseFolder, 'Judge or Examiner'];
+            case 'consultant':
+                return [$kra, $baseFolder, 'Consultant'];
+            case 'media_service':
+                return [$kra, $baseFolder, 'Media Service'];
+            case 'training_resource_person':
+                return [$kra, $baseFolder, 'Training (Resource Person)'];
+            default:
+                return [$kra, $baseFolder, Str::slug($this->activeTable)];
+        }
+    }
+
+    private function getMediaServiceTypeOptions(): array
+    {
+        return [
+            'writer_occasional_newspaper' => 'Writer of Occasional Newspaper Column/Magazine Article',
+            'writer_regular_newspaper' => 'Writer of Regular Newspaper Column/Magazine Article',
+            'host_tv_radio_program' => 'Host of TV/Radio Program',
+            'guest_technical_expert' => 'Guesting as Technical Expert for TV or Radio',
+        ];
+    }
+
+    private function getAvailableMediaServiceTypes(): array
+    {
+        $allTypes = $this->getMediaServiceTypeOptions();
+
+        $submittedTypes = Submission::where('user_id', Auth::id())
+            ->where('application_id', $this->selectedApplicationId)
+            ->where('type', $this->getActiveSubmissionType())
+            ->pluck('data.service')
+            ->all();
+
+        return array_filter(
+            $allTypes,
+            fn($key) => !in_array($key, $submittedTypes),
+            ARRAY_FILTER_USE_KEY
+        );
     }
 
     protected function getKACategory(): string
@@ -178,7 +228,12 @@ class ProfessionalServicesWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('3xl')
-                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
+                ->hidden(function (): bool {
+                    if ($this->activeTable !== 'media_service') {
+                        return false;
+                    }
+                    return empty($this->getAvailableMediaServiceTypes());
+                })
                 ->after(fn() => $this->mount()),
         ];
     }
@@ -208,14 +263,7 @@ class ProfessionalServicesWidget extends BaseKRAWidget
             default => [],
         };
 
-        $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s) (Evidence Link)')
-            ->multiple()
-            ->reorderable()
-            ->required()
-            ->disk('private')
-            ->directory(fn(): string => 'proof-documents/kra3-prof/' . $this->activeTable)
-            ->columnSpanFull();
+        $schema[] = $this->getKRAFileUploadComponent();
 
         return $schema;
     }
@@ -299,12 +347,13 @@ class ProfessionalServicesWidget extends BaseKRAWidget
     {
         return [
             Select::make('data.service')->label('Service Rendered')
-                ->options([
-                    'writer_occasional_newspaper' => 'Writer of Occasional Newspaper Column/Magazine Article',
-                    'writer_regular_newspaper' => 'Writer of Regular Newspaper Column/Magazine Article',
-                    'host_tv_radio_program' => 'Host of TV/Radio Program',
-                    'guest_technical_expert' => 'Guesting as Technical Expert for TV or Radio',
-                ])
+                ->options(function (?Submission $record): array {
+                    $allTypes = $this->getMediaServiceTypeOptions();
+                    if ($record) {
+                        return $allTypes;
+                    }
+                    return $this->getAvailableMediaServiceTypes();
+                })
                 ->searchable()
                 ->required()
                 ->live()

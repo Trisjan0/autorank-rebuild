@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA2;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -19,9 +18,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class PatentedInventionsWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -33,6 +35,29 @@ class PatentedInventionsWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+        $baseFolder = 'B: Patented Inventions';
+
+        switch ($this->activeTable) {
+            case 'invention_patent_sole':
+                return [$kra, $baseFolder, 'Invention Patent - Sole'];
+            case 'invention_patent_co':
+                return [$kra, $baseFolder, 'Invention Patent - Co-Inventor'];
+            case 'utility_design_sole':
+                return [$kra, $baseFolder, 'Utility-Design - Sole'];
+            case 'utility_design_co':
+                return [$kra, $baseFolder, 'Utility-Design - Co-Inventor'];
+            case 'commercialized_local':
+                return [$kra, $baseFolder, 'Commercialized - Local'];
+            case 'commercialized_intl':
+                return [$kra, $baseFolder, 'Commercialized - International'];
+            default:
+                return [$kra, $baseFolder, Str::slug($this->activeTable)];
+        }
     }
 
     protected function getKACategory(): string
@@ -134,7 +159,6 @@ class PatentedInventionsWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn(): string => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('3xl')
-                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                 ->after(fn() => $this->mount()),
         ];
     }
@@ -234,11 +258,7 @@ class PatentedInventionsWidget extends BaseKRAWidget
                 ->required();
         }
 
-        $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s)')
-            ->multiple()->reorderable()->required()->disk('private')
-            ->directory(fn(): string => 'proof-documents/kra2-patents/' . $this->activeTable)
-            ->columnSpanFull();
+        $schema[] = $this->getKRAFileUploadComponent();
 
         return $schema;
     }

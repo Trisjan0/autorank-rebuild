@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA4;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
@@ -17,14 +16,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class AwardsRecognitionWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a4.awards-recognition-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'C: Awards and Recognition'];
+    }
 
     protected function getKACategory(): string
     {
@@ -64,7 +71,6 @@ class AwardsRecognitionWidget extends BaseKRAWidget
                     })
                     ->modalHeading('Submit New Award/Recognition')
                     ->modalWidth('3xl')
-                    ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                     ->after(fn() => $this->mount()),
             ])
             ->actions([
@@ -119,14 +125,8 @@ class AwardsRecognitionWidget extends BaseKRAWidget
                 ->label('Venue of the Award Ceremony')
                 ->required()
                 ->maxLength(255),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (e.g., Certificate, Plaque Photo)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra4-awards')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA4;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -18,14 +17,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class PaperPresentationsWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a4.paper-presentations-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'B: Paper Presentations'];
+    }
 
     protected function getKACategory(): string
     {
@@ -118,14 +125,8 @@ class PaperPresentationsWidget extends BaseKRAWidget
                 ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (e.g., Certificate of Presentation, Copy of Paper)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra4-papers')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

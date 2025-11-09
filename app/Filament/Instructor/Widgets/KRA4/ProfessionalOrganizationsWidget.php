@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA4;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -18,14 +17,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class ProfessionalOrganizationsWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a4.professional-organizations-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'A: Professional Organizations'];
+    }
 
     protected function getKACategory(): string
     {
@@ -126,14 +133,8 @@ class ProfessionalOrganizationsWidget extends BaseKRAWidget
                 ->required()
                 ->searchable()
                 ->columnSpanFull(),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra4-orgs')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

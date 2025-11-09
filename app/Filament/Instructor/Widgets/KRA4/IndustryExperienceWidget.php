@@ -6,7 +6,6 @@ use App\Models\Submission;
 use Carbon\Carbon;
 use Closure;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
@@ -21,14 +20,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class IndustryExperienceWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a4.industry-experience-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'D: Bonus Criterion', 'Industry Experience'];
+    }
 
     protected function getKACategory(): string
     {
@@ -155,14 +162,8 @@ class IndustryExperienceWidget extends BaseKRAWidget
                         };
                     }
                 ]),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (e.g., Certificate of Employment, Contract)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra4-industry')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

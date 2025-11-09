@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA2;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,9 +19,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class PublishedPapersWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -34,6 +36,20 @@ class PublishedPapersWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+
+        switch ($this->activeTable) {
+            case 'sole_authorship':
+                return [$kra, 'A: Published Papers', 'Sole Authorship'];
+            case 'co_authorship':
+                return [$kra, 'A: Published Papers', 'Co-Authorship'];
+            default:
+                return [$kra, Str::slug($this->getActiveSubmissionType())];
+        }
     }
 
     protected function getKACategory(): string
@@ -123,7 +139,6 @@ class PublishedPapersWidget extends BaseKRAWidget
                     ? 'Submit New Research Output (Sole Authorship)'
                     : 'Submit New Research Output (Co-Authorship)')
                 ->modalWidth('3xl')
-                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                 ->after(fn() => $this->mount()),
         ];
     }
@@ -206,16 +221,7 @@ class PublishedPapersWidget extends BaseKRAWidget
                 ->required();
         }
 
-        $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s)')
-            ->multiple()
-            ->reorderable()
-            ->required()
-            ->disk('private')
-            ->directory(fn(): string => $this->activeTable === 'sole_authorship'
-                ? 'proof-documents/kra2-research-sole'
-                : 'proof-documents/kra2-research-co')
-            ->columnSpanFull();
+        $schema[] = $this->getKRAFileUploadComponent();
 
         return $schema;
     }

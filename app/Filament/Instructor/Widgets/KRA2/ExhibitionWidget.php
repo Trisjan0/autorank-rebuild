@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA2;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -19,14 +18,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class ExhibitionWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a2.exhibition-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'C: Creative Work', 'Exhibition'];
+    }
 
     protected function getKACategory(): string
     {
@@ -153,14 +160,8 @@ class ExhibitionWidget extends BaseKRAWidget
                 ->label('Organizer of the Event')
                 ->maxLength(255)
                 ->required(),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra2-creative-exhibit')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA4;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -18,14 +17,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class ConferenceTrainingWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a4.conference-training-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'B: Conference and Training'];
+    }
 
     protected function getKACategory(): string
     {
@@ -124,14 +131,8 @@ class ConferenceTrainingWidget extends BaseKRAWidget
                 ->displayFormat('m/d/Y')
                 ->required()
                 ->maxDate(now()),
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (e.g., Certificate of Participation)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra4-training')
-                ->columnSpanFull(),
+
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

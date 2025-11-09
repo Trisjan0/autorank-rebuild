@@ -3,7 +3,6 @@
 namespace App\Filament\Instructor\Widgets\KRA1;
 
 use App\Models\Submission;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Get;
@@ -19,9 +18,12 @@ use App\Forms\Components\TrimmedIntegerInput;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class TeachingEffectivenessWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -33,6 +35,25 @@ class TeachingEffectivenessWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+
+        switch ($this->activeTable) {
+            case 'student_evaluation':
+                return [$kra, 'A: Teaching Effectiveness', 'Student Evaluation'];
+            case 'supervisor_evaluation':
+                return [$kra, 'A: Teaching Effectiveness', 'Supervisor Evaluation'];
+            default:
+                return [$kra, Str::slug($this->getActiveSubmissionType())];
+        }
+    }
+
+    protected function isMultipleSubmissionAllowed(): bool
+    {
+        return false;
     }
 
     protected function getKACategory(): string
@@ -227,14 +248,7 @@ class TeachingEffectivenessWidget extends BaseKRAWidget
                         ->visible(fn(Get $get): bool => $get('data.reason_for_deducting') !== 'NOT APPLICABLE'),
                 ])->columns(2),
 
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory(fn(): string => 'proof-documents/kra1-te/' . $this->activeTable)
-                ->columnSpanFull(),
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

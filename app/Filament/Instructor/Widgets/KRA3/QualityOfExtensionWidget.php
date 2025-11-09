@@ -3,7 +3,6 @@
 namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -19,14 +18,27 @@ use Illuminate\Support\Facades\Auth;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Forms\Components\TrimmedNumericInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class QualityOfExtensionWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a3.quality-of-extension-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'C: Quality of Extension Services'];
+    }
+
+    protected function isMultipleSubmissionAllowed(): bool
+    {
+        return false;
+    }
 
     protected function getKACategory(): string
     {
@@ -199,14 +211,7 @@ class QualityOfExtensionWidget extends BaseKRAWidget
                         ->visible(fn(Get $get): bool => $get($reasonKey) !== 'NOT APPLICABLE'),
                 ])->columns(2),
 
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Consolidated Evidence Link)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra3-quality-rating')
-                ->columnSpanFull(),
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }

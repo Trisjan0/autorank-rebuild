@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA1;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,9 +19,12 @@ use Filament\Forms\Get;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
 use App\Filament\Instructor\Widgets\BaseKRAWidget;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class InstructionalMaterialsWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int|string|array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
@@ -34,6 +36,25 @@ class InstructionalMaterialsWidget extends BaseKRAWidget
     public function updatedActiveTable(): void
     {
         $this->resetTable();
+    }
+
+    /**
+     * Provides the nested folder path to the GoogleDriveService
+     */
+    protected function getGoogleDriveFolderPath(): array
+    {
+        $kra = $this->getKACategory();
+
+        switch ($this->activeTable) {
+            case 'sole_authorship':
+                return [$kra, 'B: Instructional Materials', 'Sole Authorship'];
+            case 'co_authorship':
+                return [$kra, 'B: Instructional Materials', 'Co-Authorship'];
+            case 'academic_program':
+                return [$kra, 'B: Academic Program Development'];
+            default:
+                return [$kra, Str::slug($this->getActiveSubmissionType())];
+        }
     }
 
     protected function getKACategory(): string
@@ -129,7 +150,6 @@ class InstructionalMaterialsWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn() => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('3xl')
-                ->hidden(fn(): bool => $this->submissionExistsForCurrentType())
                 ->after(fn() => $this->mount()),
         ];
     }
@@ -244,28 +264,7 @@ class InstructionalMaterialsWidget extends BaseKRAWidget
                 break;
         }
 
-        $schema[] = FileUpload::make('google_drive_file_id')
-            ->label('Proof Document(s)')
-            ->reorderable()
-            ->required()
-            ->disk('private')
-            ->directory(fn() => 'proof-documents/kra1-im/' . $this->activeTable)
-            ->maxFiles(5)
-            ->maxSize(10240)
-            ->acceptedFileTypes([
-                'application/pdf',
-                'image/jpeg',
-                'image/png',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/vnd.ms-excel',
-                'application/zip',
-            ])
-            ->helperText('Upload up to 5 proof documents (PDF, DOCX, XLSX, JPG, PNG, or ZIP, max 10MB each).')
-            ->preserveFilenames()
-            ->visibility('private')
-            ->columnSpanFull();
+        $schema[] = $this->getKRAFileUploadComponent();
 
         return $schema;
     }

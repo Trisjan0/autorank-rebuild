@@ -4,7 +4,6 @@ namespace App\Filament\Instructor\Widgets\KRA3;
 
 use App\Models\Submission;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -19,14 +18,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Forms\Components\TrimmedIntegerInput;
 use App\Tables\Columns\ScoreColumn;
+use App\Filament\Traits\HandlesKRAFileUploads;
 
 class SocialResponsibilityWidget extends BaseKRAWidget
 {
+    use HandlesKRAFileUploads;
+
     protected int | string | array $columnSpan = 'full';
 
     protected static bool $isDiscovered = false;
 
     protected static string $view = 'filament.instructor.widgets.k-r-a3.social-responsibility-widget';
+
+    protected function getGoogleDriveFolderPath(): array
+    {
+        return [$this->getKACategory(), 'B: Service to the Community', 'Social Responsibility'];
+    }
 
     protected function getKACategory(): string
     {
@@ -125,14 +132,7 @@ class SocialResponsibilityWidget extends BaseKRAWidget
                 ->required()
                 ->maxDate(now()),
 
-            FileUpload::make('google_drive_file_id')
-                ->label('Proof Document(s) (Evidence Link)')
-                ->multiple()
-                ->reorderable()
-                ->required()
-                ->disk('private')
-                ->directory('proof-documents/kra3-social-resp')
-                ->columnSpanFull(),
+            $this->getKRAFileUploadComponent(),
         ];
     }
 }
