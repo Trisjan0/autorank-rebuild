@@ -22,6 +22,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Instructor\Widgets\WelcomeWidget;
 use App\Filament\Instructor\Widgets\ScoreSummary;
 use App\Filament\Pages\GoogleSettings;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 class InstructorPanelProvider extends PanelProvider
 {
@@ -52,6 +53,7 @@ class InstructorPanelProvider extends PanelProvider
                 ScoreSummary::class,
             ])
             ->middleware([
+                ThrottleRequests::class . ':filament',
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
