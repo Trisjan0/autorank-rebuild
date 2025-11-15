@@ -48,7 +48,7 @@ class WelcomeWidget extends Widget implements HasForms, HasActions
         return Action::make('notifyAdmin')
             ->label('Notify Admin for Activation')
             ->icon('heroicon-o-paper-airplane')
-            ->color('primary')
+            ->color('warning')
             ->form([
                 Select::make('faculty_rank_id')
                     ->label('What is your Faculty Rank?')

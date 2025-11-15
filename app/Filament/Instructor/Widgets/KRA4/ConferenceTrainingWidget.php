@@ -80,11 +80,20 @@ class ConferenceTrainingWidget extends BaseKRAWidget
                 ScoreColumn::make('score'),
             ])
             ->headerActions($this->getTableHeaderActions())
-            ->actions($this->getTableActions());
+            ->actions($this->getTableActions())
+            ->paginated(!$this->validation_mode)
+            ->emptyStateHeading($this->getTableEmptyStateHeading())
+            ->emptyStateDescription($this->getTableEmptyStateDescription());
     }
 
     protected function getTableQuery(): Builder
     {
+        if ($this->validation_mode) {
+            return Submission::query()
+                ->where('application_id', $this->record->id)
+                ->where('type', $this->getActiveSubmissionType());
+        }
+
         return Submission::query()
             ->where('user_id', Auth::id())
             ->where('type', $this->getActiveSubmissionType())
@@ -113,12 +122,20 @@ class ConferenceTrainingWidget extends BaseKRAWidget
                 })
                 ->modalHeading('Submit New Conference/Training Participation')
                 ->modalWidth('3xl')
+                ->hidden($this->validation_mode)
                 ->after(fn() => $this->mount()),
         ];
     }
 
     protected function getTableActions(): array
     {
+        if ($this->validation_mode) {
+            return [
+                $this->getViewFilesAction(),
+                $this->getValidateSubmissionAction(),
+            ];
+        }
+
         return [
             ViewSubmissionFilesAction::make(),
             Tables\Actions\EditAction::make()

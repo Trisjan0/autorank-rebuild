@@ -124,13 +124,19 @@ class InstructionalMaterialsWidget extends BaseKRAWidget
             ->columns($this->getTableColumns())
             ->headerActions($this->getTableHeaderActions())
             ->actions($this->getTableActions())
-            ->checkIfRecordIsSelectableUsing(
-                fn(Submission $record): bool => !$this->submissionExistsForCurrentType() || $record->id === $this->getCurrentSubmissionId()
-            );
+            ->paginated(!$this->validation_mode)
+            ->emptyStateHeading($this->getTableEmptyStateHeading())
+            ->emptyStateDescription($this->getTableEmptyStateDescription());
     }
 
     protected function getTableQuery(): Builder
     {
+        if ($this->validation_mode) {
+            return Submission::query()
+                ->where('application_id', $this->record->id)
+                ->where('type', $this->getActiveSubmissionType());
+        }
+
         return Submission::query()
             ->where('user_id', Auth::id())
             ->where('type', $this->getActiveSubmissionType())
@@ -208,12 +214,20 @@ class InstructionalMaterialsWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn() => 'Submit New ' . Str::of($this->activeTable)->replace('_', ' ')->title())
                 ->modalWidth('3xl')
+                ->hidden($this->validation_mode)
                 ->after(fn() => $this->mount()),
         ];
     }
 
     protected function getTableActions(): array
     {
+        if ($this->validation_mode) {
+            return [
+                $this->getViewFilesAction(),
+                $this->getValidateSubmissionAction(),
+            ];
+        }
+
         return [
             ViewSubmissionFilesAction::make(),
             EditAction::make()

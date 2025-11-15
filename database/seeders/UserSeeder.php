@@ -87,12 +87,12 @@ class UserSeeder extends Seeder
      */
     private function getPassword(?string $configPassword, string $envKey): string
     {
-        if ($configPassword) {
-            return $configPassword;
-        }
-
         if (App::environment('local')) {
             return 'password';
+        }
+
+        if ($configPassword) {
+            return $configPassword;
         }
 
         throw new \Exception(
