@@ -39,7 +39,7 @@ abstract class BaseValidationWidget extends BaseWidget implements HasActions
                     ->required(),
                 Textarea::make('validator_remarks')
                     ->label('Validator Remarks')
-                    ->placeholder('Add remarks for this specific submission...')
+                    ->placeholder('Add remarks for this specific submission..')
                     ->rows(5)
                     ->columnSpanFull(),
             ]);

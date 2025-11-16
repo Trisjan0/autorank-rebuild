@@ -139,7 +139,7 @@ class TranslatedOutputsWidget extends BaseKRAWidget
                     if (!$application) {
                         return true;
                     }
-                    return $application->status !== 'draft';
+                    return $application->status !== 'Draft';
                 })
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
@@ -150,7 +150,7 @@ class TranslatedOutputsWidget extends BaseKRAWidget
                 })
                 ->modalHeading(fn(): string => 'Submit New Translated Output (' . Str::of($this->activeTable)->replace('_', ' ')->title() . ')')
                 ->modalWidth('3xl')
-                ->hidden($this->validation_mode) // <-- ADDED
+                ->hidden($this->validation_mode)
                 ->after(fn() => $this->mount()),
         ];
     }

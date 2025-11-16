@@ -50,10 +50,10 @@ class ApplicationResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'draft' => 'gray',
+                        'Draft' => 'gray',
                         'Pending Validation' => 'warning',
-                        'validated' => 'success',
-                        'rejected' => 'danger',
+                        'Validated' => 'success',
+                        'Rejected' => 'danger',
                         default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('created_at')
@@ -68,6 +68,7 @@ class ApplicationResource extends Resource
                 //
                 Tables\Actions\Action::make('validate')
                     ->label('Validate')
+                    ->icon('heroicon-o-check-badge')
                     ->url(fn(Application $record): string => static::getUrl('validate', ['record' => $record])),
             ])
             ->bulkActions([

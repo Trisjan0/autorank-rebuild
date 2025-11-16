@@ -73,9 +73,9 @@ class ValidateApplication extends Page implements HasForms
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
                 ->action(function (ApplicationScoringService $scoringService) {
-                    $this->form->save();
+                    $this->record->update($this->form->getState());
                     $scoringService->calculateScore($this->record);
-                    $this->record->status = 'validated';
+                    $this->record->status = 'Validated';
                     $this->record->save();
 
                     Notification::make()
@@ -95,8 +95,8 @@ class ValidateApplication extends Page implements HasForms
                 ->modalHeading('Reject Application')
                 ->modalDescription('Are you sure you want to reject this application? This action cannot be undone.')
                 ->action(function () {
-                    $this->form->save();
-                    $this->record->status = 'rejected';
+                    $this->record->update($this->form->getState());
+                    $this->record->status = 'Rejected';
                     $this->record->save();
 
                     Notification::make()

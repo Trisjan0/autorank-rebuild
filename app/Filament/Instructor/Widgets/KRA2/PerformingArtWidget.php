@@ -124,7 +124,7 @@ class PerformingArtWidget extends BaseKRAWidget
                     if (!$application) {
                         return true;
                     }
-                    return $application->status !== 'draft';
+                    return $application->status !== 'Draft';
                 })
                 ->mutateFormDataUsing(function (array $data): array {
                     $data['user_id'] = Auth::id();
@@ -195,7 +195,7 @@ class PerformingArtWidget extends BaseKRAWidget
                 ->required()
                 ->hidden(fn(Get $get): bool => $get('data.classification') === 'new_creation'),
             TextInput::make('data.organizer')
-                ->label('Organizer of the Event (or Publisher, if applicable)')
+                ->label('Organizer of the Event (or Publisher)')
                 ->maxLength(255)
                 ->required(),
 

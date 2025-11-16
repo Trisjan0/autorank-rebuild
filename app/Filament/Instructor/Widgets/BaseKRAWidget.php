@@ -86,7 +86,7 @@ abstract class BaseKRAWidget extends BaseWidget implements HasActions
                 $newApplication = Application::create([
                     'user_id' => $user->id,
                     'applicant_current_rank' => $user->facultyRank?->name ?? 'N/A',
-                    'status' => 'draft',
+                    'status' => 'Draft',
                     'evaluation_cycle' => $data['evaluation_cycle'],
                 ]);
 
@@ -139,7 +139,7 @@ abstract class BaseKRAWidget extends BaseWidget implements HasActions
             if (is_null($record->application_id)) {
                 return true;
             }
-            return $record->application?->status === 'draft';
+            return $record->application?->status === 'Draft';
         };
     }
 
