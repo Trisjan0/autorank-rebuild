@@ -11,6 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Tables\Columns\ScoreColumn;
+use Filament\Tables\Filters\SelectFilter;
 
 class ApplicationResource extends Resource
 {
@@ -27,7 +28,7 @@ class ApplicationResource extends Resource
     {
         return $table
             ->query(
-                Application::query()->where('status', 'Pending Validation')
+                Application::query()
             )
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
@@ -62,19 +63,21 @@ class ApplicationResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->options([
+                        'Draft' => 'Draft',
+                        'Pending Validation' => 'Pending Validation',
+                        'Validated' => 'Validated',
+                        'Rejected' => 'Rejected',
+                    ])
+                    ->default('Pending Validation'),
             ])
             ->actions([
-                //
                 Tables\Actions\Action::make('validate')
                     ->label('Validate')
                     ->icon('heroicon-o-check-badge')
-                    ->url(fn(Application $record): string => static::getUrl('validate', ['record' => $record])),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    //
-                ]),
+                    ->url(fn(Application $record): string => static::getUrl('validate', ['record' => $record]))
+                    ->visible(fn(Application $record): bool => $record->status === 'Pending Validation'),
             ]);
     }
 
